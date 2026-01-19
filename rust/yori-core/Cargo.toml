@@ -22,6 +22,7 @@ sark-cache.workspace = true
 # PyO3 for Python bindings
 # extension-module is enabled via features, not here
 pyo3.workspace = true
+pythonize.workspace = true
 
 # HTTP proxy
 hyper.workspace = true

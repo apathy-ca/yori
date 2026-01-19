@@ -249,7 +249,8 @@ mod tests {
             let stats = cache.stats(py);
             assert!(stats.is_ok());
 
-            let stats_dict: &Bound<'_, pyo3::types::PyDict> = stats.unwrap().downcast_bound(py).unwrap();
+            let stats_obj = stats.unwrap();
+            let stats_dict: &Bound<'_, pyo3::types::PyDict> = stats_obj.downcast_bound(py).unwrap();
             assert!(stats_dict.contains("entries").unwrap());
             assert!(stats_dict.contains("hits").unwrap());
             assert!(stats_dict.contains("misses").unwrap());

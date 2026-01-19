@@ -1,25 +1,36 @@
 [package]
 name = "sark-opa"
-version = "0.1.0"
-edition = "2021"
-authors = ["James Henry <jamesrahenry@henrynet.ca>"]
-license = "MIT"
-description = "Embedded OPA policy engine (vendored for YORI)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+name = "sark_opa"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# Core OPA evaluation using WebAssembly
-opa-wasm = "0.1"
+# OPA engine
+regorus.workspace = true
+
+# Python bindings
+pyo3.workspace = true
+pythonize.workspace = true
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde.workspace = true
+serde_json.workspace = true
 
 # Error handling
-anyhow = "1.0"
-thiserror = "1.0"
+thiserror.workspace = true
+anyhow.workspace = true
 
-# Async support
-tokio = { version = "1.35", features = ["fs", "io-util"] }
+[dev-dependencies]
+# Testing
+pyo3 = { version = "0.22", features = ["auto-initialize"] }
+criterion = { version = "0.5", features = ["html_reports"] }
 
-# Logging
-tracing = "0.1"
+[[bench]]
+name = "opa_benchmarks"
+harness = false

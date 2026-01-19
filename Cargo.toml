@@ -9,6 +9,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.75"
 authors = ["James Henry <jamesrahenry@henrynet.ca>"]
 license = "MIT"
 repository = "https://github.com/apathy-ca/yori"
@@ -22,6 +23,14 @@ sark-cache = { path = "rust/vendor/sark-cache" }
 # PyO3 for Python bindings (must match SARK crates)
 # Note: extension-module feature is configured per-crate, not in workspace
 pyo3 = "0.22"
+pythonize = "0.22"
+
+# OPA engine (for sark-opa)
+regorus = "0.2"
+
+# Cache (for sark-cache)
+dashmap = "6.1"
+parking_lot = "0.12"
 
 # HTTP proxy
 hyper = { version = "1.0", features = ["full"] }

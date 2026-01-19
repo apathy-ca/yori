@@ -1,21 +1,22 @@
 [package]
 name = "sark-cache"
-version = "0.1.0"
-edition = "2021"
-authors = ["James Henry <jamesrahenry@henrynet.ca>"]
-license = "MIT"
-description = "Lock-free in-memory cache (vendored for YORI)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+name = "sark_cache"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# Lock-free concurrent data structures
-dashmap = "6.0"
+dashmap.workspace = true
+pyo3.workspace = true
 
-# Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
 
-# Time handling
-tokio = { version = "1.35", features = ["time"] }
-
-# Logging
-tracing = "0.1"
+[[bench]]
+name = "cache_benchmarks"
+harness = false
