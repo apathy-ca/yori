@@ -1,0 +1,25 @@
+[package]
+name = "sark-opa"
+version = "0.1.0"
+edition = "2021"
+authors = ["James Henry <jamesrahenry@henrynet.ca>"]
+license = "MIT"
+description = "Embedded OPA policy engine (vendored for YORI)"
+
+[dependencies]
+# Core OPA evaluation using WebAssembly
+opa-wasm = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Async support
+tokio = { version = "1.35", features = ["fs", "io-util"] }
+
+# Logging
+tracing = "0.1"

@@ -1,165 +1,203 @@
 """
-Policy Evaluation for YORI
+YORI Policy Evaluation
 
-Integrates with Rust policy engine (yori_core) or provides mock evaluation.
+Python wrapper for policy evaluation using yori_core PolicyEngine.
+Provides high-level interface for loading and evaluating Rego policies.
 """
 
 import logging
-from typing import Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 
-from yori.config import YoriConfig
-from yori.models import PolicyDecision, PolicyResult, LLMProvider
+try:
+    import yori_core
+except ImportError:
+    # Fallback for development when Rust extension isn't built
+    yori_core = None
+    logging.warning("yori_core not available - policy evaluation will be stubbed")
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class PolicyResult:
+    """Result of a policy evaluation"""
+    allow: bool
+    policy: str
+    reason: str
+    mode: str  # observe, advisory, enforce
+    metadata: Optional[Dict[str, Any]] = None
+
+
 class PolicyEvaluator:
     """
-    Policy evaluator that integrates with Rust policy engine.
+    High-level policy evaluator for LLM requests.
 
-    Uses yori_core Python bindings when available, otherwise provides
-    mock evaluation for development/testing.
+    Wraps yori_core.PolicyEngine and provides a Python-friendly interface.
     """
 
-    def __init__(self, config: YoriConfig):
-        self.config = config
-        self._use_rust = False
-        self._rust_evaluator = None
-
-        # Try to import Rust policy engine
-        try:
-            from yori._core import PolicyEngine
-
-            self._rust_evaluator = PolicyEngine(str(config.policies.directory))
-            self._use_rust = True
-            logger.info("Using Rust policy engine")
-        except ImportError:
-            logger.warning(
-                "Rust policy engine not available, using mock evaluator. "
-                "Install yori_core for real policy evaluation."
-            )
-
-    async def evaluate(
-        self,
-        source_ip: str,
-        host: str,
-        path: str,
-        method: str,
-        body: bytes,
-        provider: LLMProvider,
-    ) -> PolicyResult:
+    def __init__(self, policy_dir: str = "/usr/local/etc/yori/policies"):
         """
-        Evaluate policy for a request.
+        Initialize policy evaluator.
 
         Args:
-            source_ip: Source IP address
-            host: Destination host
-            path: Request path
-            method: HTTP method
-            body: Request body
-            provider: Detected LLM provider
+            policy_dir: Directory containing compiled .wasm policy files
+        """
+        self.policy_dir = Path(policy_dir)
+        self.engine = None
+
+        if yori_core:
+            try:
+                self.engine = yori_core.PolicyEngine(str(self.policy_dir))
+                logger.info(f"Initialized policy engine with directory: {self.policy_dir}")
+            except Exception as e:
+                logger.error(f"Failed to initialize policy engine: {e}")
+        else:
+            logger.warning("Running without policy engine (yori_core not available)")
+
+    def load_policies(self) -> int:
+        """
+        Load all policy files from the policy directory.
+
+        Returns:
+            Number of policies successfully loaded
+        """
+        if not self.engine:
+            logger.warning("No policy engine available - using stub")
+            return 0
+
+        try:
+            count = self.engine.load_policies()
+            logger.info(f"Loaded {count} policies from {self.policy_dir}")
+            return count
+        except Exception as e:
+            logger.error(f"Failed to load policies: {e}")
+            return 0
+
+    def list_policies(self) -> List[str]:
+        """
+        Get list of loaded policy names.
+
+        Returns:
+            List of policy names
+        """
+        if not self.engine:
+            return []
+
+        try:
+            return self.engine.list_policies()
+        except Exception as e:
+            logger.error(f"Failed to list policies: {e}")
+            return []
+
+    def evaluate(self, request_data: Dict[str, Any]) -> PolicyResult:
+        """
+        Evaluate a request against loaded policies.
+
+        Args:
+            request_data: Dictionary containing request context:
+                - user: Username or device ID
+                - device: Device identifier
+                - endpoint: LLM endpoint (e.g., "api.openai.com")
+                - method: HTTP method
+                - path: Request path
+                - prompt: User prompt text (optional)
+                - messages: Chat messages (optional)
+                - timestamp: ISO 8601 timestamp (optional)
+                - hour: Hour of day 0-23 (optional)
+                - request_count: Daily request count (optional)
 
         Returns:
             PolicyResult with decision
         """
-        if self._use_rust and self._rust_evaluator:
-            return await self._evaluate_rust(source_ip, host, path, method, body, provider)
-        else:
-            return await self._evaluate_mock(source_ip, host, path, method, body, provider)
-
-    async def _evaluate_rust(
-        self,
-        source_ip: str,
-        host: str,
-        path: str,
-        method: str,
-        body: bytes,
-        provider: LLMProvider,
-    ) -> PolicyResult:
-        """Evaluate using Rust policy engine"""
-        # Prepare request data for Rust evaluator
-        request_data = {
-            "source_ip": source_ip,
-            "destination": host,
-            "path": path,
-            "method": method,
-            "provider": provider.value,
-            "timestamp": None,  # Will be set by Rust
-        }
+        if not self.engine:
+            # Stub behavior when engine not available
+            return PolicyResult(
+                allow=True,
+                policy="stub",
+                reason="Policy engine not available - defaulting to allow",
+                mode="observe",
+            )
 
         try:
-            # Call Rust policy engine
-            result = self._rust_evaluator.evaluate(request_data)
-
-            # Convert Rust result to PolicyResult
+            result_dict = self.engine.evaluate(request_data)
             return PolicyResult(
-                decision=PolicyDecision(result["decision"]),
-                policy_name=result.get("policy_name", "unknown"),
-                reason=result.get("reason"),
-                metadata=result.get("metadata", {}),
+                allow=result_dict["allow"],
+                policy=result_dict["policy"],
+                reason=result_dict["reason"],
+                mode=result_dict["mode"],
+                metadata=result_dict.get("metadata"),
             )
         except Exception as e:
-            logger.error(f"Rust policy evaluation failed: {e}")
-            # Fall back to allow on error (fail open)
+            logger.error(f"Policy evaluation error: {e}")
+            # Fail open - allow request on error
             return PolicyResult(
-                decision=PolicyDecision.ALLOW,
-                policy_name="error_fallback",
-                reason=f"Policy evaluation error: {str(e)}",
+                allow=True,
+                policy="error",
+                reason=f"Policy evaluation failed: {e}",
+                mode="observe",
             )
 
-    async def _evaluate_mock(
-        self,
-        source_ip: str,
-        host: str,
-        path: str,
-        method: str,
-        body: bytes,
-        provider: LLMProvider,
-    ) -> PolicyResult:
+    def test_policy(self, policy_name: str, test_data: Dict[str, Any]) -> PolicyResult:
         """
-        Mock policy evaluator for development/testing.
+        Test a specific policy with sample data (dry run).
 
-        This implements simple rules for demonstration:
-        - Block requests from specific test IPs
-        - Alert on requests to unknown providers
-        - Allow all others
+        Args:
+            policy_name: Name of policy to test
+            test_data: Sample input data
+
+        Returns:
+            PolicyResult from test evaluation
         """
-        # Example: Block requests from test IP
-        if source_ip == "192.168.1.666":
+        if not self.engine:
             return PolicyResult(
-                decision=PolicyDecision.BLOCK,
-                policy_name="mock_block_test_ip",
-                reason=f"Blocked test IP: {source_ip}",
+                allow=True,
+                policy=policy_name,
+                reason="Policy engine not available",
+                mode="test",
             )
 
-        # Example: Alert on unknown providers
-        if provider == LLMProvider.UNKNOWN:
+        try:
+            result_dict = self.engine.test_policy(policy_name, test_data)
             return PolicyResult(
-                decision=PolicyDecision.ALERT,
-                policy_name="mock_unknown_provider",
-                reason=f"Unknown LLM provider for host: {host}",
+                allow=result_dict["allow"],
+                policy=result_dict["policy"],
+                reason=result_dict["reason"],
+                mode=result_dict["mode"],
+                metadata=result_dict.get("metadata"),
+            )
+        except Exception as e:
+            logger.error(f"Policy test error: {e}")
+            return PolicyResult(
+                allow=True,
+                policy=policy_name,
+                reason=f"Test failed: {e}",
+                mode="test",
             )
 
-        # Example: Check for sensitive keywords in request body (simple demo)
-        if body:
-            try:
-                body_text = body.decode("utf-8", errors="ignore").lower()
 
-                # Very basic content filtering (for demonstration only)
-                sensitive_keywords = ["secret", "password", "apikey"]
-                for keyword in sensitive_keywords:
-                    if keyword in body_text:
-                        return PolicyResult(
-                            decision=PolicyDecision.ALERT,
-                            policy_name="mock_sensitive_content",
-                            reason=f"Request contains sensitive keyword: {keyword}",
-                        )
-            except Exception:
-                pass
+# Global policy evaluator instance
+_evaluator: Optional[PolicyEvaluator] = None
 
-        # Default: allow
-        return PolicyResult(
-            decision=PolicyDecision.ALLOW,
-            policy_name="mock_default_allow",
-            reason="No policy violations detected",
-        )
+
+def get_evaluator() -> PolicyEvaluator:
+    """Get or create the global policy evaluator instance."""
+    global _evaluator
+    if _evaluator is None:
+        _evaluator = PolicyEvaluator()
+        _evaluator.load_policies()
+    return _evaluator
+
+
+def evaluate_request(request_data: Dict[str, Any]) -> PolicyResult:
+    """
+    Convenience function to evaluate a request using the global evaluator.
+
+    Args:
+        request_data: Request context dictionary
+
+    Returns:
+        PolicyResult
+    """
+    return get_evaluator().evaluate(request_data)
