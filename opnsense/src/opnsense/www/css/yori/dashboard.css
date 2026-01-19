@@ -1,0 +1,211 @@
+/**
+ * YORI Dashboard Custom Styles
+ * Extends Bootstrap 5 for YORI-specific UI elements
+ *
+ * @package YORI
+ * @license MIT
+ */
+
+/* Summary Cards */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: box-shadow 0.3s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-body .opacity-50 {
+    opacity: 0.5;
+}
+
+/* Chart containers */
+canvas {
+    max-height: 400px;
+}
+
+/* Alert badges */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Page header */
+.page-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.page-header small {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-left: 0.5rem;
+}
+
+/* Table improvements */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.025);
+}
+
+.table thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+    color: #495057;
+}
+
+/* Loading state */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Button group spacing */
+.btn-group {
+    gap: 0.5rem;
+}
+
+.btn-group .btn {
+    margin-right: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .card-title h3 {
+        font-size: 1.75rem;
+    }
+
+    canvas {
+        max-height: 300px;
+    }
+}
+
+/* Card border colors */
+.border-primary {
+    border-left: 4px solid #0d6efd !important;
+}
+
+.border-success {
+    border-left: 4px solid #198754 !important;
+}
+
+.border-info {
+    border-left: 4px solid #0dcaf0 !important;
+}
+
+.border-warning {
+    border-left: 4px solid #ffc107 !important;
+}
+
+.border-danger {
+    border-left: 4px solid #dc3545 !important;
+}
+
+/* Icon colors in cards */
+.text-primary { color: #0d6efd !important; }
+.text-success { color: #198754 !important; }
+.text-info { color: #0dcaf0 !important; }
+.text-warning { color: #ffc107 !important; }
+.text-danger { color: #dc3545 !important; }
+
+/* Refresh button animation */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.fa-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Empty state */
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* Chart loading placeholder */
+.chart-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: #999;
+    font-size: 0.875rem;
+}
+
+/* Endpoint-specific colors for consistency */
+.endpoint-openai {
+    background-color: #10a37f;
+    color: white;
+}
+
+.endpoint-anthropic {
+    background-color: #d4a574;
+    color: white;
+}
+
+.endpoint-google {
+    background-color: #4285f4;
+    color: white;
+}
+
+.endpoint-mistral {
+    background-color: #ff7000;
+    color: white;
+}
+
+/* Policy result badges */
+.policy-allow {
+    background-color: #198754;
+    color: white;
+}
+
+.policy-alert {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.policy-block {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Accessibility improvements */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Focus visible for keyboard navigation */
+.btn:focus-visible,
+a:focus-visible {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+    .btn-group,
+    .page-header small {
+        display: none;
+    }
+
+    .card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
