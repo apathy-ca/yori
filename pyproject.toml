@@ -1,6 +1,6 @@
 [build-system]
-requires = ["maturin>=1.0,<2.0"]
-build-backend = "maturin"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "yori"
@@ -51,11 +51,11 @@ Repository = "https://github.com/apathy-ca/yori"
 Documentation = "https://github.com/apathy-ca/yori/blob/main/README.md"
 Issues = "https://github.com/apathy-ca/yori/issues"
 
-[tool.maturin]
-# Build the Rust extension as a Python module
-python-source = "python"
-module-name = "yori._core"
-features = ["pyo3/extension-module"]
+[tool.setuptools]
+# Pure Python package for now
+# Rust module will be added when Worker 1 completes
+packages = ["yori"]
+package-dir = {"" = "python"}
 
 [tool.black]
 line-length = 100

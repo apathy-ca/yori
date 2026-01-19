@@ -1,0 +1,32 @@
+# YORI Configuration Example
+# Copy to /usr/local/etc/yori/yori.conf and customize
+
+# Operation mode: observe, advisory, or enforce
+# - observe: Log all traffic, no blocking
+# - advisory: Log and warn, but don't block
+# - enforce: Log and block policy violations
+mode: observe
+
+# Listen address and port
+listen: "0.0.0.0:8443"
+
+# LLM endpoints to intercept
+endpoints:
+  - domain: "api.openai.com"
+    enabled: true
+  - domain: "api.anthropic.com"
+    enabled: true
+  - domain: "gemini.google.com"
+    enabled: true
+  - domain: "api.mistral.ai"
+    enabled: true
+
+# Audit logging configuration
+audit:
+  database: "/var/db/yori/audit.db"
+  retention_days: 365
+
+# Policy engine configuration
+policies:
+  directory: "/usr/local/etc/yori/policies"
+  default: "home_default.rego"
