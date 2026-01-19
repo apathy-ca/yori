@@ -43,5 +43,8 @@ futures.workspace = true
 # Time handling (for proxy)
 chrono.workspace = true
 
+# UUID generation (for audit logging)
+uuid.workspace = true
+
 [target.'cfg(target_os = "freebsd")'.dependencies]
 # FreeBSD-specific dependencies (if needed)
