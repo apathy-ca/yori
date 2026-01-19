@@ -1,0 +1,10 @@
+<acl>
+    <page-services-yori>
+        <name>Services: YORI</name>
+        <description>Access YORI service management</description>
+        <patterns>
+            <pattern>ui/yori*</pattern>
+            <pattern>api/yori*</pattern>
+        </patterns>
+    </page-services-yori>
+</acl>

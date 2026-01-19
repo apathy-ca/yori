@@ -1,0 +1,8 @@
+<menu>
+    <Services>
+        <YORI VisibleName="YORI" cssClass="fa fa-shield fa-fw">
+            <Service VisibleName="Service Management" url="/ui/yori" order="10"/>
+            <Settings VisibleName="Settings" url="/ui/yori/general" order="20"/>
+        </YORI>
+    </Services>
+</menu>

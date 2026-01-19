@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# PROVIDE: yori
+# REQUIRE: LOGIN cleanvar
+# KEYWORD: shutdown
+#
+# Add the following lines to /etc/rc.conf.local or /etc/rc.conf
+# to enable this service:
+#
+# yori_enable (bool):   Set to NO by default.
+#                       Set it to YES to enable yori.
+# yori_config (path):   Set to /usr/local/etc/yori/yori.conf by default.
+#                       Path to configuration file.
+# yori_user (user):     Set to nobody by default.
+#                       User to run yori as.
+# yori_group (group):   Set to nobody by default.
+#                       Group to run yori as.
+
+. /etc/rc.subr
+
+name=yori
+rcvar=yori_enable
+
+load_rc_config $name
+
+: ${yori_enable:="NO"}
+: ${yori_config:="/usr/local/etc/yori/yori.conf"}
+: ${yori_user:="nobody"}
+: ${yori_group:="nobody"}
+: ${yori_host:="0.0.0.0"}
+: ${yori_port:="8443"}
+
+pidfile="/var/run/${name}.pid"
+command="/usr/sbin/daemon"
+procname="/usr/local/bin/python3.9"
+yori_bin="/usr/local/bin/yori"
+
+# Create required directories
+yori_prestart()
+{
+    # Create config directory
+    if [ ! -d "/usr/local/etc/yori" ]; then
+        mkdir -p /usr/local/etc/yori
+        chown ${yori_user}:${yori_group} /usr/local/etc/yori
+    fi
+
+    # Create data directory
+    if [ ! -d "/var/db/yori" ]; then
+        mkdir -p /var/db/yori
+        chown ${yori_user}:${yori_group} /var/db/yori
+    fi
+
+    # Create policy directory
+    if [ ! -d "/usr/local/etc/yori/policies" ]; then
+        mkdir -p /usr/local/etc/yori/policies
+        chown ${yori_user}:${yori_group} /usr/local/etc/yori/policies
+    fi
+
+    # Create run directory
+    if [ ! -d "/var/run/yori" ]; then
+        mkdir -p /var/run/yori
+        chown ${yori_user}:${yori_group} /var/run/yori
+    fi
+
+    # Create log directory
+    if [ ! -d "/var/log/yori" ]; then
+        mkdir -p /var/log/yori
+        chown ${yori_user}:${yori_group} /var/log/yori
+    fi
+
+    # Create default config if it doesn't exist
+    if [ ! -f "${yori_config}" ]; then
+        cat > "${yori_config}" <<EOF
+mode: observe
+listen: ${yori_host}:${yori_port}
+
+endpoints:
+  - domain: api.openai.com
+    enabled: true
+  - domain: api.anthropic.com
+    enabled: true
+  - domain: gemini.google.com
+    enabled: true
+  - domain: api.mistral.ai
+    enabled: true
+
+audit:
+  database: /var/db/yori/audit.db
+  retention_days: 365
+
+policies:
+  directory: /usr/local/etc/yori/policies
+  default: home_default.rego
+EOF
+        chown ${yori_user}:${yori_group} "${yori_config}"
+    fi
+}
+
+start_precmd="yori_prestart"
+
+# Build command arguments
+command_args="-f -p ${pidfile} -u ${yori_user} ${procname} -m yori.main --config ${yori_config} --host ${yori_host} --port ${yori_port}"
+
+run_rc_command "$1"

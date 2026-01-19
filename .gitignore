@@ -47,3 +47,4 @@ ENV/
 *.txz
 *.pkg
 .coverage
+opnsense/work/
