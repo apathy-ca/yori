@@ -24,6 +24,7 @@ use std::net::SocketAddr;
 
 /// Configuration for the YORI proxy server
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ProxyConfig {
     /// Listen address (e.g., "0.0.0.0:8443")
     pub listen_addr: SocketAddr,
@@ -43,6 +44,7 @@ pub struct ProxyConfig {
 
 /// Proxy operation mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum ProxyMode {
     /// Log only, never block
     Observe,
@@ -72,12 +74,14 @@ impl Default for ProxyConfig {
 }
 
 /// YORI transparent proxy server
+#[allow(dead_code)]
 pub struct ProxyServer {
     config: ProxyConfig,
 }
 
 impl ProxyServer {
     /// Create a new proxy server with the given configuration
+    #[allow(dead_code)]
     pub fn new(config: ProxyConfig) -> Self {
         ProxyServer { config }
     }
@@ -86,6 +90,7 @@ impl ProxyServer {
     ///
     /// This starts the HTTP/HTTPS server and begins intercepting traffic.
     /// This method blocks until the server is stopped.
+    #[allow(dead_code)]
     pub async fn start(&self) -> Result<()> {
         // TODO: Implement actual proxy server using hyper + rustls
         //
@@ -118,6 +123,7 @@ impl ProxyServer {
     }
 
     /// Gracefully shutdown the proxy server
+    #[allow(dead_code)]
     pub async fn shutdown(&self) -> Result<()> {
         // TODO: Implement graceful shutdown
         tracing::info!("YORI proxy server shutting down");
@@ -125,6 +131,7 @@ impl ProxyServer {
     }
 
     /// Check if an endpoint should be intercepted
+    #[allow(dead_code)]
     fn should_intercept(&self, host: &str) -> bool {
         self.config.endpoints.iter().any(|e| host.contains(e))
     }
@@ -132,6 +139,7 @@ impl ProxyServer {
 
 /// Request context for policy evaluation and auditing
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct RequestContext {
     /// Client IP address
     pub client_ip: String,
@@ -157,6 +165,7 @@ pub struct RequestContext {
 
 /// Response context for auditing
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ResponseContext {
     /// HTTP status code
     pub status: u16,
