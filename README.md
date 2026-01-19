@@ -58,14 +58,14 @@ That's it! YORI is now logging all LLM traffic.
 
 ## Features
 
-### Phase 1: Observe Mode (v0.1.0)
+### Phase 1: Observe Mode (v0.1.0 - In Development)
 
-- ✅ Transparent LLM traffic interception
-- ✅ SQLite audit logging (1 year retention)
-- ✅ Web dashboard with charts and statistics
-- ✅ Support for OpenAI, Anthropic, Google, Mistral
-- ✅ Device-level tracking (who asked what)
-- ✅ Export to CSV for analysis
+- 🔄 Transparent LLM traffic interception
+- 🔄 SQLite audit logging (1 year retention)
+- 🔄 Web dashboard with charts and statistics
+- 🔄 Support for OpenAI, Anthropic, Google, Mistral
+- 🔄 Device-level tracking (who asked what)
+- 🔄 Export to CSV for analysis
 
 ### Phase 2: Advisory Mode (v0.2.0)
 
@@ -172,13 +172,25 @@ See [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) for details.
 
 ## Project Status
 
-🚧 **Early Development** - Not yet ready for production use
+🚧 **Early Development** - Architecture and skeleton code in place
 
-- **Current:** Milestone 1 (Foundation) - Repository structure, build system
-- **Next:** Milestone 2 (Transparent Proxy) - Working LLM interception
-- **Target:** v0.1.0 release in ~3 months
+**What Works Now:**
+- ✅ Repository structure and build system
+- ✅ Configuration loading (YAML → Pydantic models)
+- ✅ PyO3 bindings skeleton (Rust ↔ Python)
+- ✅ FastAPI server (basic health check endpoint)
 
-See [ROADMAP.md](ROADMAP.md) for details.
+**In Active Development:**
+- 🔄 Transparent proxy implementation (stub code exists)
+- 🔄 SQLite audit logging (schema defined, not implemented)
+- 🔄 sark-opa policy engine integration (stub code exists)
+- 🔄 OPNsense plugin (planned, not started)
+- 🔄 Web dashboard (planned, not started)
+
+**Current Milestone:** M1 - Foundation complete, starting M2 (Transparent Proxy)
+**Target:** v0.1.0 alpha release in ~3 months
+
+See [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) for detailed roadmap.
 
 ---
 
