@@ -10,12 +10,17 @@ repository.workspace = true
 name = "yori_core"
 crate-type = ["cdylib", "rlib"]  # cdylib for Python, rlib for Rust
 
+[features]
+# Default features for building Python extension
+default = ["pyo3/extension-module"]
+
 [dependencies]
 # SARK components (from workspace)
 sark-opa.workspace = true
 sark-cache.workspace = true
 
 # PyO3 for Python bindings
+# extension-module is enabled via features, not here
 pyo3.workspace = true
 
 # HTTP proxy
@@ -45,6 +50,10 @@ chrono.workspace = true
 
 # UUID generation (for audit logging)
 uuid.workspace = true
+
+[dev-dependencies]
+# For tests, we need auto-initialize to link against Python
+pyo3 = { workspace = true, features = ["auto-initialize"] }
 
 [target.'cfg(target_os = "freebsd")'.dependencies]
 # FreeBSD-specific dependencies (if needed)
