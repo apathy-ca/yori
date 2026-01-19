@@ -39,10 +39,11 @@ def test_health_check_structure(client):
     assert "endpoints" in data
 
 
-def test_proxy_not_implemented(client):
-    """Test that proxy routes return not implemented"""
-    # This will be replaced with actual proxy logic later
+def test_proxy_endpoint_exists(client):
+    """Test that proxy routes exist and handle requests"""
+    # Make a proxy request (will fail without backend but should not return 404)
     response = client.post("/v1/chat/completions")
-    assert response.status_code == 501
+    # Should get 403 (disabled endpoint) or 502 (backend error), not 404 or 501
+    assert response.status_code in [403, 502]
     data = response.json()
     assert "error" in data

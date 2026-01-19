@@ -30,12 +30,31 @@ except ImportError:
 # Import Python components
 from yori.config import YoriConfig
 from yori.proxy import ProxyServer
+from yori.audit import AuditLogger
+from yori.policy import PolicyEvaluator
+from yori.models import (
+    OperationMode,
+    PolicyDecision,
+    LLMProvider,
+    AuditEvent,
+    PolicyResult,
+)
+from yori.detection import detect_provider, extract_preview
 
 __all__ = [
     "PolicyEngine",
     "Cache",
     "YoriConfig",
     "ProxyServer",
+    "AuditLogger",
+    "PolicyEvaluator",
+    "OperationMode",
+    "PolicyDecision",
+    "LLMProvider",
+    "AuditEvent",
+    "PolicyResult",
+    "detect_provider",
+    "extract_preview",
     "__version__",
     "__author__",
 ]
