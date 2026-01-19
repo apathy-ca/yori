@@ -1,0 +1,120 @@
+{
+  "project": {
+    "name": "YORI",
+    "slug": "yori",
+    "version": "0.1.0",
+    "phase": 1,
+    "description": "Build a lightweight LLM gateway for home networks running on OPNsense routers - observe, log, and optionally control LLM traffic with enterprise-grade governance capabilities.",
+    "repository": "/home/jhenry/Source/yori",
+    "orchestration_dir": ".czarina"
+  },
+  "orchestration": {
+    "mode": "local",
+    "auto_push_branches": false
+  },
+  "omnibus_branch": "cz1/release/v0.1.0",
+  "workers": [
+    {
+      "id": "rust-foundation",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz1/feat/rust-foundation",
+      "description": "Establish Rust workspace with SARK crate integration, PyO3 bindings, and FreeBSD cross-compilation p",
+      "dependencies": [],
+      "phase": 1
+    },
+    {
+      "id": "python-proxy",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz1/feat/python-proxy",
+      "description": "Build FastAPI transparent proxy service that intercepts LLM traffic, evaluates policies via Rust cor",
+      "dependencies": [
+        "rust-foundation"
+      ],
+      "phase": 1
+    },
+    {
+      "id": "opnsense-plugin",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz1/feat/opnsense-plugin",
+      "description": "Create OPNsense plugin structure with service management, web UI for start/stop/status, and package ",
+      "dependencies": [
+        "python-proxy"
+      ],
+      "phase": 1
+    },
+    {
+      "id": "dashboard-ui",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz1/feat/dashboard-ui",
+      "description": "Build comprehensive web dashboard for LLM usage statistics, audit log viewer, and real-time monitori",
+      "dependencies": [
+        "opnsense-plugin"
+      ],
+      "phase": 1
+    },
+    {
+      "id": "policy-engine",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz1/feat/policy-engine",
+      "description": "Integrate sark-opa policy engine for Rego evaluation, create policy editor UI, implement advisory al",
+      "dependencies": [
+        "rust-foundation",
+        "python-proxy"
+      ],
+      "phase": 1
+    },
+    {
+      "id": "documentation",
+      "role": "docs",
+      "agent": "claude",
+      "branch": "cz1/feat/documentation",
+      "description": "Create comprehensive user and developer documentation with installation guides, configuration refere",
+      "dependencies": [
+        "dashboard-ui",
+        "policy-engine"
+      ],
+      "phase": 1
+    },
+    {
+      "id": "testing-qa",
+      "role": "qa",
+      "agent": "claude",
+      "branch": "cz1/feat/testing-qa",
+      "description": "Develop comprehensive test suite covering unit tests, integration tests, end-to-end tests, and perfo",
+      "dependencies": [
+        "policy-engine"
+      ],
+      "phase": 1
+    },
+    {
+      "id": "integration-release",
+      "role": "integration",
+      "agent": "claude",
+      "branch": "cz1/feat/integration-release",
+      "description": "Integrate all components, resolve conflicts, perform final QA, build release packages, and prepare v",
+      "dependencies": [
+        "rust-foundation",
+        "python-proxy",
+        "opnsense-plugin",
+        "dashboard-ui",
+        "policy-engine",
+        "documentation",
+        "testing-qa"
+      ],
+      "phase": 1
+    }
+  ],
+  "daemon": {
+    "enabled": true,
+    "auto_approve": [
+      "read",
+      "write",
+      "commit"
+    ]
+  }
+}
