@@ -2,6 +2,8 @@
 resolver = "2"
 members = [
     "rust/yori-core",
+    "rust/vendor/sark-opa",
+    "rust/vendor/sark-cache",
 ]
 
 [workspace.package]
@@ -12,11 +14,10 @@ license = "MIT"
 repository = "https://github.com/apathy-ca/yori"
 
 [workspace.dependencies]
-# SARK components - path dependencies during development
-# Switch to git dependencies for releases:
-#   sark-opa = { git = "https://github.com/apathy-ca/sark", tag = "v1.6.0" }
-sark-opa = { path = "../sark/rust/sark-opa" }
-sark-cache = { path = "../sark/rust/sark-cache" }
+# SARK components - vendored for YORI development
+# These are minimal implementations wrapping existing Rust crates
+sark-opa = { path = "rust/vendor/sark-opa" }
+sark-cache = { path = "rust/vendor/sark-cache" }
 
 # PyO3 for Python bindings (must match SARK crates)
 pyo3 = { version = "0.22", features = ["extension-module"] }

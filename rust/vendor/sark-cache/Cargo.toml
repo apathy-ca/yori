@@ -1,0 +1,21 @@
+[package]
+name = "sark-cache"
+version = "0.1.0"
+edition = "2021"
+authors = ["James Henry <jamesrahenry@henrynet.ca>"]
+license = "MIT"
+description = "Lock-free in-memory cache (vendored for YORI)"
+
+[dependencies]
+# Lock-free concurrent data structures
+dashmap = "6.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Time handling
+tokio = { version = "1.35", features = ["time"] }
+
+# Logging
+tracing = "0.1"
