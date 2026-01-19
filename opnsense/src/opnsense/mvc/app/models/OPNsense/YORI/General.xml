@@ -1,0 +1,70 @@
+<model>
+    <mount>//OPNsense/YORI</mount>
+    <description>YORI - Zero-trust LLM governance for home networks</description>
+    <version>0.1.0</version>
+    <items>
+        <general>
+            <enabled type="BooleanField">
+                <default>0</default>
+                <Required>Y</Required>
+            </enabled>
+            <mode type="OptionField">
+                <default>observe</default>
+                <Required>Y</Required>
+                <OptionValues>
+                    <observe>Observe</observe>
+                    <advisory>Advisory</advisory>
+                    <enforce>Enforce</enforce>
+                </OptionValues>
+            </mode>
+            <listen_address type="TextField">
+                <default>0.0.0.0</default>
+                <Required>Y</Required>
+                <Mask>/^([0-9]{1,3}\.){3}[0-9]{1,3}$/</Mask>
+                <ValidationMessage>Please enter a valid IP address</ValidationMessage>
+            </listen_address>
+            <listen_port type="IntegerField">
+                <default>8443</default>
+                <Required>Y</Required>
+                <MinimumValue>1</MinimumValue>
+                <MaximumValue>65535</MaximumValue>
+                <ValidationMessage>Port must be between 1 and 65535</ValidationMessage>
+            </listen_port>
+            <config_path type="TextField">
+                <default>/usr/local/etc/yori/yori.conf</default>
+                <Required>Y</Required>
+            </config_path>
+            <audit_database type="TextField">
+                <default>/var/db/yori/audit.db</default>
+                <Required>Y</Required>
+            </audit_database>
+            <audit_retention_days type="IntegerField">
+                <default>365</default>
+                <Required>Y</Required>
+                <MinimumValue>1</MinimumValue>
+                <MaximumValue>3650</MaximumValue>
+                <ValidationMessage>Retention must be between 1 and 3650 days</ValidationMessage>
+            </audit_retention_days>
+            <policy_directory type="TextField">
+                <default>/usr/local/etc/yori/policies</default>
+                <Required>Y</Required>
+            </policy_directory>
+            <policy_default type="TextField">
+                <default>home_default.rego</default>
+                <Required>Y</Required>
+            </policy_default>
+        </general>
+        <endpoints>
+            <endpoint type="ArrayField">
+                <domain type="TextField">
+                    <Required>Y</Required>
+                    <ValidationMessage>Domain name is required</ValidationMessage>
+                </domain>
+                <enabled type="BooleanField">
+                    <default>1</default>
+                    <Required>Y</Required>
+                </enabled>
+            </endpoint>
+        </endpoints>
+    </items>
+</model>

@@ -1,0 +1,23 @@
+name: os-yori
+version: "0.1.0"
+origin: opnsense/yori
+comment: YORI - Zero-trust LLM governance for home networks
+desc: |
+  YORI provides transparent interception and policy-based governance of LLM API
+  traffic on home networks. It acts as a proxy between your devices and LLM
+  services (OpenAI, Anthropic, Google, etc.), enabling visibility, audit logging,
+  and policy enforcement for AI interactions.
+
+  Features:
+  - Transparent proxy for major LLM APIs
+  - Three operation modes: observe, advisory, enforce
+  - SQLite-based audit logging with retention policies
+  - OPA (Open Policy Agent) policy engine integration
+  - Web UI for service management and configuration
+  - Real-time service status monitoring
+maintainer: yori@example.com
+www: https://github.com/yourusername/yori
+prefix: /usr/local
+categories: [security]
+licenselogic: single
+licenses: [MIT]

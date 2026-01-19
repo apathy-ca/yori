@@ -46,3 +46,4 @@ ENV/
 # Build artifacts
 *.txz
 *.pkg
+opnsense/work/
