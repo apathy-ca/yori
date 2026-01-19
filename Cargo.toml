@@ -15,8 +15,8 @@ repository = "https://github.com/apathy-ca/yori"
 # SARK components - path dependencies during development
 # Switch to git dependencies for releases:
 #   sark-opa = { git = "https://github.com/apathy-ca/sark", tag = "v1.6.0" }
-sark-opa = { path = "../sark/rust/sark-opa" }
-sark-cache = { path = "../sark/rust/sark-cache" }
+sark-opa = { path = "../../../../sark/rust/sark-opa" }
+sark-cache = { path = "../../../../sark/rust/sark-cache" }
 
 # PyO3 for Python bindings (must match SARK crates)
 pyo3 = { version = "0.22", features = ["extension-module"] }
