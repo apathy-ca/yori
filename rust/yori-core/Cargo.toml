@@ -1,0 +1,47 @@
+[package]
+name = "yori-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "yori_core"
+crate-type = ["cdylib", "rlib"]  # cdylib for Python, rlib for Rust
+
+[dependencies]
+# SARK components (from workspace)
+sark-opa.workspace = true
+sark-cache.workspace = true
+
+# PyO3 for Python bindings
+pyo3.workspace = true
+
+# HTTP proxy
+hyper.workspace = true
+hyper-util.workspace = true
+tokio.workspace = true
+rustls.workspace = true
+rustls-pemfile.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Async
+futures.workspace = true
+
+# Time handling (for proxy)
+chrono.workspace = true
+
+[target.'cfg(target_os = "freebsd")'.dependencies]
+# FreeBSD-specific dependencies (if needed)
