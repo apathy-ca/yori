@@ -163,6 +163,7 @@ impl Cache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pyo3::Python;
 
     #[test]
     fn test_cache_creation() {
@@ -171,5 +172,131 @@ mod tests {
         let c = cache.unwrap();
         assert_eq!(c.max_entries, 1000);
         assert_eq!(c.ttl, Duration::from_secs(300));
+    }
+
+    #[test]
+    fn test_cache_creation_with_defaults() {
+        let cache = Cache::new(10000, 3600);
+        assert!(cache.is_ok());
+        let c = cache.unwrap();
+        assert_eq!(c.max_entries, 10000);
+        assert_eq!(c.ttl, Duration::from_secs(3600));
+    }
+
+    #[test]
+    fn test_cache_creation_small_capacity() {
+        let cache = Cache::new(1, 1);
+        assert!(cache.is_ok());
+        let c = cache.unwrap();
+        assert_eq!(c.max_entries, 1);
+        assert_eq!(c.ttl, Duration::from_secs(1));
+    }
+
+    #[test]
+    fn test_cache_creation_large_capacity() {
+        let cache = Cache::new(1_000_000, 86400);
+        assert!(cache.is_ok());
+        let c = cache.unwrap();
+        assert_eq!(c.max_entries, 1_000_000);
+    }
+
+    #[test]
+    fn test_cache_set() {
+        Python::with_gil(|py| {
+            let cache = Cache::new(100, 60).unwrap();
+            let key = "test_key".to_string();
+            let value = py.None();
+            let result = cache.set(key, value);
+            assert!(result.is_ok());
+            assert!(result.unwrap()); // Stub returns true
+        });
+    }
+
+    #[test]
+    fn test_cache_get_missing() {
+        Python::with_gil(|py| {
+            let cache = Cache::new(100, 60).unwrap();
+            let key = "missing_key".to_string();
+            let result = cache.get(py, key);
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_none()); // Stub returns None
+        });
+    }
+
+    #[test]
+    fn test_cache_delete() {
+        let cache = Cache::new(100, 60).unwrap();
+        let key = "test_key".to_string();
+        let result = cache.delete(key);
+        assert!(result.is_ok());
+        assert!(!result.unwrap()); // Stub returns false (not found)
+    }
+
+    #[test]
+    fn test_cache_clear() {
+        let cache = Cache::new(100, 60).unwrap();
+        let result = cache.clear();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0); // Stub returns 0
+    }
+
+    #[test]
+    fn test_cache_stats() {
+        Python::with_gil(|py| {
+            let cache = Cache::new(100, 60).unwrap();
+            let stats = cache.stats(py);
+            assert!(stats.is_ok());
+
+            let stats_dict: &Bound<'_, pyo3::types::PyDict> = stats.unwrap().downcast_bound(py).unwrap();
+            assert!(stats_dict.contains("entries").unwrap());
+            assert!(stats_dict.contains("hits").unwrap());
+            assert!(stats_dict.contains("misses").unwrap());
+            assert!(stats_dict.contains("hit_rate").unwrap());
+        });
+    }
+
+    #[test]
+    fn test_cache_contains_missing() {
+        let cache = Cache::new(100, 60).unwrap();
+        let key = "test_key".to_string();
+        let result = cache.contains(key);
+        assert!(result.is_ok());
+        assert!(!result.unwrap()); // Stub returns false
+    }
+
+    #[test]
+    fn test_cache_set_ttl() {
+        let cache = Cache::new(100, 60).unwrap();
+        let key = "test_key".to_string();
+        let ttl = 120;
+        let result = cache.set_ttl(key, ttl);
+        assert!(result.is_ok());
+        assert!(!result.unwrap()); // Stub returns false (key not found)
+    }
+
+    #[test]
+    fn test_cache_multiple_instances() {
+        let cache1 = Cache::new(100, 60).unwrap();
+        let cache2 = Cache::new(200, 120).unwrap();
+
+        assert_eq!(cache1.max_entries, 100);
+        assert_eq!(cache2.max_entries, 200);
+        assert_eq!(cache1.ttl, Duration::from_secs(60));
+        assert_eq!(cache2.ttl, Duration::from_secs(120));
+    }
+
+    #[test]
+    fn test_cache_ttl_conversion() {
+        let cache = Cache::new(100, 3600).unwrap();
+        assert_eq!(cache.ttl, Duration::from_secs(3600));
+        assert_eq!(cache.ttl.as_secs(), 3600);
+    }
+
+    #[test]
+    fn test_cache_zero_ttl() {
+        let cache = Cache::new(100, 0);
+        assert!(cache.is_ok());
+        let c = cache.unwrap();
+        assert_eq!(c.ttl, Duration::from_secs(0));
     }
 }

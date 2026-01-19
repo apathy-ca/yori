@@ -127,10 +127,140 @@ impl PolicyEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pyo3::Python;
+    use pyo3::types::PyDict;
 
     #[test]
     fn test_policy_engine_creation() {
         let engine = PolicyEngine::new("/tmp/policies".to_string());
         assert!(engine.is_ok());
+    }
+
+    #[test]
+    fn test_policy_engine_with_valid_path() {
+        let engine = PolicyEngine::new("/usr/local/etc/yori/policies".to_string());
+        assert!(engine.is_ok());
+        let eng = engine.unwrap();
+        assert_eq!(eng.policy_dir, std::path::PathBuf::from("/usr/local/etc/yori/policies"));
+    }
+
+    #[test]
+    fn test_policy_engine_with_relative_path() {
+        let engine = PolicyEngine::new("./policies".to_string());
+        assert!(engine.is_ok());
+    }
+
+    #[test]
+    fn test_policy_engine_with_empty_path() {
+        let engine = PolicyEngine::new("".to_string());
+        assert!(engine.is_ok());
+    }
+
+    #[test]
+    fn test_evaluate_returns_valid_dict() {
+        Python::with_gil(|py| {
+            let engine = PolicyEngine::new("/tmp/policies".to_string()).unwrap();
+            let input_data = PyDict::new_bound(py);
+            input_data.set_item("user", "alice").unwrap();
+            input_data.set_item("endpoint", "api.openai.com").unwrap();
+
+            let result = engine.evaluate(py, input_data).unwrap();
+            let result_dict: &Bound<'_, PyDict> = result.downcast_bound(py).unwrap();
+
+            assert!(result_dict.contains("allow").unwrap());
+            assert!(result_dict.contains("policy").unwrap());
+            assert!(result_dict.contains("reason").unwrap());
+            assert!(result_dict.contains("mode").unwrap());
+        });
+    }
+
+    #[test]
+    fn test_evaluate_stub_allows_all() {
+        Python::with_gil(|py| {
+            let engine = PolicyEngine::new("/tmp/policies".to_string()).unwrap();
+            let input_data = PyDict::new_bound(py);
+
+            let result = engine.evaluate(py, input_data).unwrap();
+            let result_dict: &Bound<'_, PyDict> = result.downcast_bound(py).unwrap();
+
+            let allow: bool = result_dict.get_item("allow").unwrap().unwrap().extract().unwrap();
+            assert!(allow); // Stub implementation allows all
+        });
+    }
+
+    #[test]
+    fn test_evaluate_stub_returns_observe_mode() {
+        Python::with_gil(|py| {
+            let engine = PolicyEngine::new("/tmp/policies".to_string()).unwrap();
+            let input_data = PyDict::new_bound(py);
+
+            let result = engine.evaluate(py, input_data).unwrap();
+            let result_dict: &Bound<'_, PyDict> = result.downcast_bound(py).unwrap();
+
+            let mode: String = result_dict.get_item("mode").unwrap().unwrap().extract().unwrap();
+            assert_eq!(mode, "observe");
+        });
+    }
+
+    #[test]
+    fn test_load_policies_returns_count() {
+        let engine = PolicyEngine::new("/tmp/policies".to_string()).unwrap();
+        let count = engine.load_policies().unwrap();
+        assert_eq!(count, 0); // Stub returns 0
+    }
+
+    #[test]
+    fn test_list_policies_returns_list() {
+        Python::with_gil(|py| {
+            let engine = PolicyEngine::new("/tmp/policies".to_string()).unwrap();
+            let policies = engine.list_policies(py).unwrap();
+            let list: &Bound<'_, pyo3::types::PyList> = policies.downcast_bound(py).unwrap();
+            assert_eq!(list.len(), 0); // Stub returns empty list
+        });
+    }
+
+    #[test]
+    fn test_test_policy_returns_dict() {
+        Python::with_gil(|py| {
+            let engine = PolicyEngine::new("/tmp/policies".to_string()).unwrap();
+            let input_data = PyDict::new_bound(py);
+            let policy_name = "test_policy".to_string();
+
+            let result = engine.test_policy(py, policy_name.clone(), input_data).unwrap();
+            let result_dict: &Bound<'_, PyDict> = result.downcast_bound(py).unwrap();
+
+            assert!(result_dict.contains("allow").unwrap());
+            assert!(result_dict.contains("policy").unwrap());
+
+            let returned_policy: String = result_dict.get_item("policy").unwrap().unwrap().extract().unwrap();
+            assert_eq!(returned_policy, policy_name);
+        });
+    }
+
+    #[test]
+    fn test_policy_engine_multiple_instances() {
+        let engine1 = PolicyEngine::new("/tmp/policies1".to_string()).unwrap();
+        let engine2 = PolicyEngine::new("/tmp/policies2".to_string()).unwrap();
+
+        assert_eq!(engine1.policy_dir, std::path::PathBuf::from("/tmp/policies1"));
+        assert_eq!(engine2.policy_dir, std::path::PathBuf::from("/tmp/policies2"));
+    }
+
+    #[test]
+    fn test_evaluate_with_complex_input() {
+        Python::with_gil(|py| {
+            let engine = PolicyEngine::new("/tmp/policies".to_string()).unwrap();
+            let input_data = PyDict::new_bound(py);
+
+            // Add multiple fields
+            input_data.set_item("user", "alice").unwrap();
+            input_data.set_item("endpoint", "api.openai.com").unwrap();
+            input_data.set_item("method", "POST").unwrap();
+            input_data.set_item("path", "/v1/chat/completions").unwrap();
+            input_data.set_item("time", "2024-01-15T14:30:00Z").unwrap();
+
+            let result = engine.evaluate(py, input_data).unwrap();
+            assert!(result.is_truthy(py).unwrap());
+        });
     }
 }

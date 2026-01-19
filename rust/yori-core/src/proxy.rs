@@ -180,6 +180,71 @@ mod tests {
     }
 
     #[test]
+    fn test_proxy_config_default_listen_address() {
+        let config = ProxyConfig::default();
+        assert_eq!(config.listen_addr.to_string(), "0.0.0.0:8443");
+    }
+
+    #[test]
+    fn test_proxy_config_default_tls_paths() {
+        let config = ProxyConfig::default();
+        assert_eq!(config.tls_cert_path, "/usr/local/etc/yori/certs/yori.crt");
+        assert_eq!(config.tls_key_path, "/usr/local/etc/yori/certs/yori.key");
+    }
+
+    #[test]
+    fn test_proxy_config_default_endpoints() {
+        let config = ProxyConfig::default();
+        assert_eq!(config.endpoints.len(), 4);
+        assert!(config.endpoints.contains(&"api.openai.com".to_string()));
+        assert!(config.endpoints.contains(&"api.anthropic.com".to_string()));
+        assert!(config.endpoints.contains(&"gemini.google.com".to_string()));
+        assert!(config.endpoints.contains(&"api.mistral.ai".to_string()));
+    }
+
+    #[test]
+    fn test_proxy_mode_observe() {
+        assert_eq!(ProxyMode::Observe, ProxyMode::Observe);
+        assert_ne!(ProxyMode::Observe, ProxyMode::Advisory);
+        assert_ne!(ProxyMode::Observe, ProxyMode::Enforce);
+    }
+
+    #[test]
+    fn test_proxy_mode_advisory() {
+        assert_eq!(ProxyMode::Advisory, ProxyMode::Advisory);
+        assert_ne!(ProxyMode::Advisory, ProxyMode::Observe);
+        assert_ne!(ProxyMode::Advisory, ProxyMode::Enforce);
+    }
+
+    #[test]
+    fn test_proxy_mode_enforce() {
+        assert_eq!(ProxyMode::Enforce, ProxyMode::Enforce);
+        assert_ne!(ProxyMode::Enforce, ProxyMode::Observe);
+        assert_ne!(ProxyMode::Enforce, ProxyMode::Advisory);
+    }
+
+    #[test]
+    fn test_proxy_server_creation() {
+        let config = ProxyConfig::default();
+        let server = ProxyServer::new(config.clone());
+        assert_eq!(server.config.mode, config.mode);
+    }
+
+    #[test]
+    fn test_proxy_server_with_custom_config() {
+        let config = ProxyConfig {
+            listen_addr: "127.0.0.1:9000".parse().unwrap(),
+            tls_cert_path: "/custom/cert.pem".to_string(),
+            tls_key_path: "/custom/key.pem".to_string(),
+            endpoints: vec!["custom.ai".to_string()],
+            mode: ProxyMode::Enforce,
+        };
+        let server = ProxyServer::new(config.clone());
+        assert_eq!(server.config.mode, ProxyMode::Enforce);
+        assert_eq!(server.config.endpoints.len(), 1);
+    }
+
+    #[test]
     fn test_should_intercept() {
         let config = ProxyConfig::default();
         let server = ProxyServer::new(config);
@@ -187,5 +252,141 @@ mod tests {
         assert!(server.should_intercept("api.openai.com"));
         assert!(server.should_intercept("api.anthropic.com"));
         assert!(!server.should_intercept("example.com"));
+    }
+
+    #[test]
+    fn test_should_intercept_partial_match() {
+        let config = ProxyConfig::default();
+        let server = ProxyServer::new(config);
+
+        // Should match if endpoint is contained in host
+        assert!(server.should_intercept("subdomain.api.openai.com"));
+        assert!(server.should_intercept("api.openai.com:443"));
+    }
+
+    #[test]
+    fn test_should_intercept_case_sensitivity() {
+        let config = ProxyConfig::default();
+        let server = ProxyServer::new(config);
+
+        // Current implementation is case-sensitive
+        assert!(!server.should_intercept("API.OPENAI.COM"));
+    }
+
+    #[test]
+    fn test_should_intercept_empty_endpoint_list() {
+        let config = ProxyConfig {
+            endpoints: vec![],
+            ..Default::default()
+        };
+        let server = ProxyServer::new(config);
+
+        assert!(!server.should_intercept("api.openai.com"));
+    }
+
+    #[test]
+    fn test_request_context_creation() {
+        let ctx = RequestContext {
+            client_ip: "192.168.1.100".to_string(),
+            endpoint: "api.openai.com".to_string(),
+            method: "POST".to_string(),
+            path: "/v1/chat/completions".to_string(),
+            user_agent: Some("curl/7.68.0".to_string()),
+            prompt_preview: Some("What is the weather?".to_string()),
+            timestamp: chrono::Utc::now(),
+        };
+
+        assert_eq!(ctx.client_ip, "192.168.1.100");
+        assert_eq!(ctx.endpoint, "api.openai.com");
+        assert_eq!(ctx.method, "POST");
+    }
+
+    #[test]
+    fn test_request_context_optional_fields() {
+        let ctx = RequestContext {
+            client_ip: "192.168.1.100".to_string(),
+            endpoint: "api.openai.com".to_string(),
+            method: "GET".to_string(),
+            path: "/".to_string(),
+            user_agent: None,
+            prompt_preview: None,
+            timestamp: chrono::Utc::now(),
+        };
+
+        assert!(ctx.user_agent.is_none());
+        assert!(ctx.prompt_preview.is_none());
+    }
+
+    #[test]
+    fn test_response_context_creation() {
+        let ctx = ResponseContext {
+            status: 200,
+            duration_ms: 1234,
+            tokens: Some(42),
+        };
+
+        assert_eq!(ctx.status, 200);
+        assert_eq!(ctx.duration_ms, 1234);
+        assert_eq!(ctx.tokens, Some(42));
+    }
+
+    #[test]
+    fn test_response_context_without_tokens() {
+        let ctx = ResponseContext {
+            status: 404,
+            duration_ms: 50,
+            tokens: None,
+        };
+
+        assert_eq!(ctx.status, 404);
+        assert!(ctx.tokens.is_none());
+    }
+
+    #[test]
+    fn test_proxy_config_clone() {
+        let config1 = ProxyConfig::default();
+        let config2 = config1.clone();
+
+        assert_eq!(config1.mode, config2.mode);
+        assert_eq!(config1.listen_addr, config2.listen_addr);
+        assert_eq!(config1.endpoints, config2.endpoints);
+    }
+
+    #[test]
+    fn test_proxy_mode_debug() {
+        let mode = ProxyMode::Observe;
+        let debug_str = format!("{:?}", mode);
+        assert!(debug_str.contains("Observe"));
+    }
+
+    #[test]
+    fn test_request_context_debug() {
+        let ctx = RequestContext {
+            client_ip: "192.168.1.1".to_string(),
+            endpoint: "api.openai.com".to_string(),
+            method: "POST".to_string(),
+            path: "/v1/chat/completions".to_string(),
+            user_agent: None,
+            prompt_preview: None,
+            timestamp: chrono::Utc::now(),
+        };
+
+        let debug_str = format!("{:?}", ctx);
+        assert!(debug_str.contains("192.168.1.1"));
+        assert!(debug_str.contains("api.openai.com"));
+    }
+
+    #[test]
+    fn test_response_context_clone() {
+        let ctx1 = ResponseContext {
+            status: 200,
+            duration_ms: 100,
+            tokens: Some(50),
+        };
+        let ctx2 = ctx1.clone();
+
+        assert_eq!(ctx1.status, ctx2.status);
+        assert_eq!(ctx1.duration_ms, ctx2.duration_ms);
+        assert_eq!(ctx1.tokens, ctx2.tokens);
     }
 }
