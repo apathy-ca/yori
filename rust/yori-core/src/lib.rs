@@ -44,12 +44,15 @@
 
 use pyo3::prelude::*;
 
+mod audit;
 mod cache;
 mod policy;
 mod proxy;
 
+pub use audit::{AuditEvent, AuditEventType, AuditLogger, PolicyDecision};
 pub use cache::Cache;
 pub use policy::PolicyEngine;
+pub use proxy::{ProxyConfig, ProxyMode, ProxyServer, RequestContext, ResponseContext};
 
 /// Initialize the YORI core module for Python.
 ///
@@ -71,8 +74,6 @@ fn yori_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_module_initialization() {
         // Basic smoke test

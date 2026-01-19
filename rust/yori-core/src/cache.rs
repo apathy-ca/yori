@@ -30,7 +30,9 @@ use std::time::Duration;
 #[pyclass]
 pub struct Cache {
     // TODO: Replace with actual sark-cache instance
+    #[allow(dead_code)]
     max_entries: usize,
+    #[allow(dead_code)]
     ttl: Duration,
 }
 

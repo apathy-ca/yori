@@ -34,6 +34,7 @@ use std::path::PathBuf;
 #[pyclass]
 pub struct PolicyEngine {
     // TODO: Replace with actual sark-opa engine once integrated
+    #[allow(dead_code)]
     policy_dir: PathBuf,
 }
 
