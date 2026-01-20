@@ -1,0 +1,83 @@
+{
+  "project": {
+    "name": "YORI",
+    "slug": "yori",
+    "version": "0.2.0",
+    "phase": 2,
+    "description": "Phase 2: Add optional enforcement mode to YORI - block LLM requests based on policies with allowlist and override mechanisms.",
+    "repository": "/home/jhenry/Source/yori",
+    "orchestration_dir": ".czarina"
+  },
+  "orchestration": {
+    "mode": "local",
+    "auto_push_branches": false
+  },
+  "omnibus_branch": "cz2/release/v0.2.0",
+  "workers": [
+    {
+      "id": "enforcement-mode",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz2/feat/enforcement-mode",
+      "description": "Implement enforcement mode with explicit user consent, per-policy enforcement toggles, and mode switching UI (observe/advisory/enforce)",
+      "dependencies": [],
+      "phase": 2
+    },
+    {
+      "id": "block-page",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz2/feat/block-page",
+      "description": "Create friendly block page with policy explanation, reason, timestamp, and request override option with password authentication",
+      "dependencies": [
+        "enforcement-mode"
+      ],
+      "phase": 2
+    },
+    {
+      "id": "allowlist-blocklist",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz2/feat/allowlist-blocklist",
+      "description": "Build device allowlist (never block these IPs), time-based exceptions, and emergency override mechanism with management UI",
+      "dependencies": [
+        "enforcement-mode"
+      ],
+      "phase": 2
+    },
+    {
+      "id": "enhanced-audit",
+      "role": "code",
+      "agent": "claude",
+      "branch": "cz2/feat/enhanced-audit",
+      "description": "Enhance audit logging for enforcement: log all blocks, policy triggers, user overrides, and create enforcement dashboard widgets",
+      "dependencies": [
+        "block-page",
+        "allowlist-blocklist"
+      ],
+      "phase": 2
+    },
+    {
+      "id": "integration-release",
+      "role": "integration",
+      "agent": "claude",
+      "branch": "cz2/release/v0.2.0",
+      "description": "Integrate all Phase 2 components, merge with Phase 1 code, perform enforcement testing, build v0.2.0 release with updated documentation",
+      "dependencies": [
+        "enforcement-mode",
+        "block-page",
+        "allowlist-blocklist",
+        "enhanced-audit"
+      ],
+      "phase": 2
+    }
+  ],
+  "daemon": {
+    "enabled": true,
+    "auto_approve": [
+      "read",
+      "write",
+      "commit"
+    ]
+  }
+}
