@@ -1,0 +1,53 @@
+# YORI Configuration Example
+# Copy this to /usr/local/etc/yori/yori.conf or /etc/yori/yori.conf
+
+# Operation mode: observe, advisory, or enforce
+mode: enforce
+
+# Listen address for the proxy
+listen: "0.0.0.0:8443"
+
+# LLM endpoints to intercept
+endpoints:
+  - domain: api.openai.com
+    enabled: true
+  - domain: api.anthropic.com
+    enabled: true
+  - domain: gemini.google.com
+    enabled: true
+  - domain: api.mistral.ai
+    enabled: true
+
+# Audit logging configuration
+audit:
+  database: /var/db/yori/audit.db
+  retention_days: 365
+
+# Policy configuration
+policies:
+  directory: /usr/local/etc/yori/policies
+  default: home_default.rego
+
+# Enforcement and override configuration
+enforcement:
+  # Enable password-based override for blocked requests
+  override_enabled: true
+
+  # SHA-256 hash of override password
+  # To generate: python3 -c "import hashlib; print('sha256:' + hashlib.sha256(b'your_password').hexdigest())"
+  # Example below is hash of 'test123' (DO NOT USE IN PRODUCTION)
+  override_password_hash: "sha256:ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae"
+
+  # Maximum override attempts per minute per IP
+  override_rate_limit: 3
+
+  # SHA-256 hash of emergency admin override token (for bypassing all policies)
+  # Leave empty to disable emergency override
+  admin_token_hash: ""
+
+  # Custom block messages per policy (optional)
+  custom_messages:
+    bedtime.rego: "LLM access is restricted after bedtime. Please try again tomorrow morning."
+    privacy.rego: "This request may contain sensitive information. Please review your prompt."
+    rate_limit.rego: "You've exceeded your request limit. Please wait before trying again."
+    content_filter.rego: "Your request was flagged by content filters. Please modify your prompt."
