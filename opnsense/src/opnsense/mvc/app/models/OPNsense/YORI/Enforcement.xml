@@ -1,0 +1,61 @@
+<model>
+    <mount>//OPNsense/YORI</mount>
+    <description>YORI Enforcement Mode Configuration</description>
+    <version>1.0.0</version>
+
+    <items>
+        <enforcement>
+            <enabled type="BooleanField">
+                <default>0</default>
+                <Required>N</Required>
+                <Constraints>
+                    <check001>
+                        <ValidationMessage>Enforcement requires consent to be accepted</ValidationMessage>
+                        <type>CallbackConstraint</type>
+                        <callback>enforceConsentCheck</callback>
+                    </check001>
+                </Constraints>
+            </enabled>
+            <consent_accepted type="BooleanField">
+                <default>0</default>
+                <Required>N</Required>
+            </consent_accepted>
+        </enforcement>
+
+        <mode type="OptionField">
+            <default>observe</default>
+            <Required>Y</Required>
+            <OptionValues>
+                <observe>Observe (Monitor only, never block)</observe>
+                <advisory>Advisory (Show alerts, don't block)</advisory>
+                <enforce>Enforce (Actually block requests)</enforce>
+            </OptionValues>
+        </mode>
+
+        <policies>
+            <policy type="ArrayField">
+                <name type="TextField">
+                    <Required>Y</Required>
+                    <mask>/^[a-z0-9_]+$/</mask>
+                    <ValidationMessage>Policy name must contain only lowercase letters, numbers, and underscores</ValidationMessage>
+                </name>
+                <enabled type="BooleanField">
+                    <default>1</default>
+                    <Required>N</Required>
+                </enabled>
+                <action type="OptionField">
+                    <default>alert</default>
+                    <Required>Y</Required>
+                    <OptionValues>
+                        <allow>Allow (pass through)</allow>
+                        <alert>Alert (log only)</alert>
+                        <block>Block (deny request)</block>
+                    </OptionValues>
+                </action>
+                <description type="TextField">
+                    <Required>N</Required>
+                </description>
+            </policy>
+        </policies>
+    </items>
+</model>

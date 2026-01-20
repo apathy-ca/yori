@@ -1,0 +1,121 @@
+<form>
+    <tab id="enforcement-general" description="Enforcement Mode">
+        <subtab id="enforcement-settings" description="Settings">
+            <field>
+                <id>mode</id>
+                <label>Operation Mode</label>
+                <type>dropdown</type>
+                <help>
+                    <![CDATA[
+                    <strong>Observe:</strong> Monitor all requests, never block (safe default)<br>
+                    <strong>Advisory:</strong> Show alerts but don't block<br>
+                    <strong>Enforce:</strong> Actually block requests based on policies (requires consent)
+                    ]]>
+                </help>
+            </field>
+
+            <field>
+                <id>enforcement.enabled</id>
+                <label>Enforcement Enabled</label>
+                <type>checkbox</type>
+                <help>
+                    <![CDATA[
+                    Enable enforcement mode. This must be checked for blocking to work.<br>
+                    <strong>WARNING:</strong> Requires consent to be accepted below.
+                    ]]>
+                </help>
+                <style>color: #d9534f; font-weight: bold;</style>
+            </field>
+
+            <field>
+                <id>enforcement.consent_accepted</id>
+                <label>I Accept the Risks</label>
+                <type>checkbox</type>
+                <help>
+                    <![CDATA[
+                    <div class="alert alert-danger">
+                    <strong>WARNING: Enforcement mode will actively BLOCK LLM requests!</strong><br><br>
+                    By checking this box, you acknowledge that:<br>
+                    <ul>
+                        <li>This can break AI-powered applications and services</li>
+                        <li>ChatGPT, Claude, and other LLM interfaces may stop working</li>
+                        <li>Development tools using LLM APIs may fail</li>
+                        <li>You have tested policies in 'observe' mode first</li>
+                        <li>You have reviewed audit logs to understand impact</li>
+                        <li>You have a plan to quickly disable enforcement if needed</li>
+                    </ul>
+                    </div>
+                    ]]>
+                </help>
+                <style>color: #d9534f; font-weight: bold;</style>
+            </field>
+        </subtab>
+
+        <subtab id="enforcement-policies" description="Policy Actions">
+            <field>
+                <id>policies.policy</id>
+                <label>Policy Configuration</label>
+                <type>table</type>
+                <help>
+                    <![CDATA[
+                    Configure enforcement actions for each policy individually:<br>
+                    <strong>Allow:</strong> Pass requests through (policy disabled for enforcement)<br>
+                    <strong>Alert:</strong> Log policy violations but don't block<br>
+                    <strong>Block:</strong> Actually block requests (enforcement mode only)
+                    ]]>
+                </help>
+            </field>
+        </subtab>
+
+        <subtab id="enforcement-help" description="Help">
+            <field>
+                <type>info</type>
+                <label>Enforcement Mode Requirements</label>
+                <help>
+                    <![CDATA[
+                    <h4>For enforcement to actually block requests, ALL of these must be true:</h4>
+                    <ol>
+                        <li>Mode = <strong>enforce</strong></li>
+                        <li>Enforcement Enabled = <strong>checked</strong></li>
+                        <li>Consent Accepted = <strong>checked</strong></li>
+                        <li>At least one policy configured with action = <strong>block</strong></li>
+                        <li>That policy must be enabled</li>
+                    </ol>
+
+                    <h4>Safe Defaults</h4>
+                    <ul>
+                        <li>Default mode: <strong>observe</strong> (never blocks)</li>
+                        <li>Default enforcement: <strong>disabled</strong></li>
+                        <li>Default consent: <strong>not accepted</strong></li>
+                        <li>Unconfigured policies: <strong>alert</strong> (safe)</li>
+                    </ul>
+
+                    <h4>Testing Before Enabling</h4>
+                    <ol>
+                        <li>Run in <strong>observe</strong> mode for several days</li>
+                        <li>Review audit logs in <strong>YORI &gt; Audit Logs</strong></li>
+                        <li>Understand what would be blocked</li>
+                        <li>Configure per-policy actions carefully</li>
+                        <li>Switch to <strong>advisory</strong> mode first (alerts without blocking)</li>
+                        <li>Only enable <strong>enforce</strong> mode when confident</li>
+                    </ol>
+
+                    <h4>Emergency Disable</h4>
+                    <p>If enforcement is causing problems, you can disable it by:</p>
+                    <ul>
+                        <li>Unchecking <strong>Enforcement Enabled</strong>, OR</li>
+                        <li>Changing mode to <strong>observe</strong> or <strong>advisory</strong>, OR</li>
+                        <li>Editing <code>/usr/local/etc/yori/yori.conf</code> and setting <code>enforcement.enabled: false</code></li>
+                    </ul>
+
+                    <h4>Audit Logging</h4>
+                    <p>All enforcement decisions are logged to the audit database at:</p>
+                    <pre>/var/db/yori/audit.db</pre>
+                    <p>View logs in <strong>YORI &gt; Audit Logs</strong> or via:</p>
+                    <pre>sqlite3 /var/db/yori/audit.db "SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 100"</pre>
+                    ]]>
+                </help>
+            </field>
+        </subtab>
+    </tab>
+</form>
