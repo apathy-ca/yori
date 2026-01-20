@@ -5,7 +5,7 @@ Loads configuration from YAML files and provides type-safe access.
 """
 
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Dict
 from pydantic import BaseModel, Field
 import yaml
 
@@ -26,6 +26,28 @@ class AuditConfig(BaseModel):
     retention_days: int = Field(default=365, description="How long to keep audit logs")
 
 
+class EnforcementConfig(BaseModel):
+    """Enforcement mode configuration"""
+
+    enabled: bool = Field(
+        default=False, description="Whether enforcement mode is enabled (requires consent)"
+    )
+    consent_accepted: bool = Field(
+        default=False,
+        description="Whether user has accepted enforcement mode risks (required to enable)",
+    )
+
+
+class PolicyFileConfig(BaseModel):
+    """Configuration for an individual policy file"""
+
+    enabled: bool = Field(default=True, description="Whether this policy is enabled")
+    action: Literal["allow", "alert", "block"] = Field(
+        default="alert",
+        description="Action to take when policy triggers (allow=pass through, alert=log only, block=deny request)",
+    )
+
+
 class PolicyConfig(BaseModel):
     """Policy engine configuration"""
 
@@ -33,6 +55,10 @@ class PolicyConfig(BaseModel):
         default=Path("/usr/local/etc/yori/policies"), description="Directory containing .rego files"
     )
     default: str = Field(default="home_default.rego", description="Default policy file")
+    files: Dict[str, PolicyFileConfig] = Field(
+        default_factory=dict,
+        description="Per-policy configuration (key is policy filename without .rego)",
+    )
 
 
 class YoriConfig(BaseModel):
@@ -54,6 +80,7 @@ class YoriConfig(BaseModel):
 
     audit: AuditConfig = Field(default_factory=AuditConfig)
     policies: PolicyConfig = Field(default_factory=PolicyConfig)
+    enforcement: EnforcementConfig = Field(default_factory=EnforcementConfig)
 
     @classmethod
     def from_yaml(cls, path: Path) -> "YoriConfig":
