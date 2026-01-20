@@ -406,7 +406,7 @@ class ProxyServer:
         await self._audit_logger.initialize()
 
         # Initialize policy evaluator
-        self._policy_evaluator = PolicyEvaluator(self.config)
+        self._policy_evaluator = PolicyEvaluator(str(self.config.policies.directory))
 
         logger.info(f"YORI proxy server starting (mode: {self.config.mode})")
 

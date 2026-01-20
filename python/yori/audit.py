@@ -18,13 +18,14 @@ logger = logging.getLogger(__name__)
 class AuditLogger:
     """SQLite-based audit logger"""
 
-    def __init__(self, db_path: Path):
-        self.db_path = db_path
+    def __init__(self, db_path: Path | str):
+        self.db_path = Path(db_path) if not isinstance(db_path, Path) else db_path
         self._ensure_directory()
 
     def _ensure_directory(self):
         """Ensure database directory exists"""
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        if str(self.db_path) != ":memory:":
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
     async def initialize(self):
         """Initialize database schema"""
