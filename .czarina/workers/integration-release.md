@@ -2,96 +2,64 @@
 
 **Role:** Integration
 **Agent:** Claude
-**Branch:** cz1/feat/integration-release
-**Phase:** 1
-**Dependencies:** rust-foundation, python-proxy, opnsense-plugin, dashboard-ui, policy-engine, documentation, testing-qa
+**Branch:** cz2/release/v0.2.0
+**Phase:** 2
+**Dependencies:** enforcement-mode, block-page, allowlist-blocklist, enhanced-audit
 
 ## Mission
 
-Integrate all components, resolve conflicts, perform final QA, build release packages, and prepare v0.1.0 for public release.
+Integrate all Phase 2 enforcement components, merge with Phase 1 stable code, perform comprehensive enforcement testing, build v0.2.0 release artifacts, and prepare public release with updated documentation.
 
 ## 🚀 YOUR FIRST ACTION
 
-Create omnibus branch cz1/release/v0.1.0, merge all worker branches in dependency order (rust-foundation → python-proxy → opnsense-plugin → dashboard-ui → policy-engine → documentation → testing-qa), and resolve any merge conflicts.
+Create omnibus branch cz2/release/v0.2.0 from main (which has Phase 1), merge all Phase 2 worker branches in dependency order, and run full test suite to validate integration.
 
-## Objectives
+## Dependencies from All Phase 2 Workers
 
-1. Create release branch (cz1/release/v0.1.0)
-2. Merge all worker branches in dependency order
-3. Resolve merge conflicts and integration issues
-4. Verify all tests pass on integrated codebase
-5. Build release artifacts:
-
-## Deliverables
-
-Complete implementation of: Integrate all components, resolve conflicts, perform final QA, build release packages, and prepare v
-
-## Dependencies from All Workers (1-7)
-
-**Integration Checklist:**
-
-### Worker 1: rust-foundation
-- [ ] Rust builds for FreeBSD
-- [ ] PyO3 bindings tested (`import yori_core` works)
-- [ ] CI/CD green
+### Worker 9: enforcement-mode
+- [ ] Enforcement mode configuration complete
+- [ ] Explicit consent mechanism working
+- [ ] Per-policy enforcement toggles functional
+- [ ] Mode switching UI operational
+- [ ] Block logic integrated into proxy
 - [ ] All unit tests passing
 
-### Worker 2: python-proxy
-- [ ] Proxy logs LLM traffic to SQLite
-- [ ] FastAPI service starts (`uvicorn yori.main:app`)
-- [ ] Health check responds (`GET /health`)
-- [ ] <10ms latency verified
+### Worker 10: block-page
+- [ ] Block page HTML template created
+- [ ] Override mechanism functional (password auth)
+- [ ] Override attempts logged
+- [ ] Rate limiting working (3 attempts/min)
 - [ ] All unit tests passing
 
-### Worker 3: opnsense-plugin
-- [ ] OPNsense plugin package builds (`.txz`)
-- [ ] Plugin installs on OPNsense VM
-- [ ] Service management works (start/stop/status)
-- [ ] Web UI displays correctly
-
-### Worker 4: dashboard-ui
-- [ ] Dashboard displays all charts
-- [ ] Audit log viewer functional
-- [ ] CSV export works
-- [ ] SQL queries optimized (<500ms)
-
-### Worker 5: policy-engine
-- [ ] Policies evaluate correctly (test with bedtime.rego)
-- [ ] Alerts trigger successfully (test email/web)
-- [ ] 4+ policy templates included
+### Worker 11: allowlist-blocklist
+- [ ] Device allowlist configuration working
+- [ ] Allowlist bypass functional
+- [ ] Time-based exceptions operational
+- [ ] Emergency override mechanism working
+- [ ] Allowlist management UI complete
 - [ ] All unit tests passing
 
-### Worker 6: documentation
-- [ ] All 12 documentation files complete
-- [ ] Screenshots current and accurate
-- [ ] Installation tested on fresh OPNsense VM
-- [ ] All links working (no 404s)
-
-### Worker 7: testing-qa
-- [ ] >80% code coverage (Rust and Python)
-- [ ] All tests passing (unit, integration, e2e)
-- [ ] Performance targets met:
-  - [ ] Latency <10ms (p95)
-  - [ ] Memory <256MB RSS
-  - [ ] Throughput >50 req/sec
-- [ ] Benchmark reports generated
+### Worker 12: enhanced-audit
+- [ ] SQLite schema extended
+- [ ] All enforcement events logged
+- [ ] Enforcement dashboard widget functional
+- [ ] Enforcement timeline view complete
+- [ ] Statistics accurate
+- [ ] All unit tests passing
 
 ## Merge Order & Commands
 
 ```bash
-# Create omnibus branch
+# Create omnibus branch from main (Phase 1 stable)
 git checkout main
 git pull origin main
-git checkout -b cz1/release/v0.1.0
+git checkout -b cz2/release/v0.2.0
 
-# Merge in dependency order
-git merge cz1/feat/rust-foundation --no-ff -m "Integrate: Rust foundation"
-git merge cz1/feat/python-proxy --no-ff -m "Integrate: Python proxy"
-git merge cz1/feat/opnsense-plugin --no-ff -m "Integrate: OPNsense plugin"
-git merge cz1/feat/dashboard-ui --no-ff -m "Integrate: Dashboard UI"
-git merge cz1/feat/policy-engine --no-ff -m "Integrate: Policy engine"
-git merge cz1/feat/documentation --no-ff -m "Integrate: Documentation"
-git merge cz1/feat/testing-qa --no-ff -m "Integrate: Testing & QA"
+# Merge Phase 2 workers in dependency order
+git merge cz2/feat/enforcement-mode --no-ff -m "Integrate: Enforcement mode"
+git merge cz2/feat/block-page --no-ff -m "Integrate: Block page and overrides"
+git merge cz2/feat/allowlist-blocklist --no-ff -m "Integrate: Allowlist and emergency override"
+git merge cz2/feat/enhanced-audit --no-ff -m "Integrate: Enhanced enforcement audit"
 
 # Run full test suite
 echo "Running Rust tests..."
@@ -99,6 +67,9 @@ cargo test --workspace
 
 echo "Running Python tests..."
 pytest tests/ -v
+
+echo "Running enforcement-specific tests..."
+pytest tests/integration/test_enforcement.py -v
 
 # Build release artifacts
 echo "Building FreeBSD binary..."
@@ -112,212 +83,333 @@ make -C opnsense package
 
 # Verify artifacts
 ls -lh target/x86_64-unknown-freebsd/release/libyori_core.so
-ls -lh dist/yori-0.1.0-py3-none-any.whl
-ls -lh opnsense/os-yori-0.1.0.txz
+ls -lh dist/yori-0.2.0-py3-none-any.whl
+ls -lh opnsense/os-yori-0.2.0.txz
 ```
-
-## Conflict Resolution Procedures
-
-**If Merge Conflicts Occur:**
-
-1. **Identify Conflict Owner:**
-   - Files in `rust/`: Consult Worker 1 (check commit history)
-   - Files in `python/`: Consult Worker 2
-   - Files in `opnsense/`: Consult Workers 3 or 4
-   - Files in `policies/`: Consult Worker 5
-   - Files in `docs/`: Consult Worker 6
-   - Files in `tests/`: Consult Worker 7
-
-2. **Resolution Strategy:**
-   ```bash
-   # View conflict
-   git diff --name-only --diff-filter=U
-
-   # For each conflicted file
-   git checkout --ours <file>    # If current worker is correct
-   git checkout --theirs <file>  # If incoming worker is correct
-   # Or manually merge in editor
-
-   # Mark resolved
-   git add <file>
-   git commit
-   ```
-
-3. **Validation After Resolution:**
-   ```bash
-   # Re-run tests
-   cargo test --workspace
-   pytest tests/
-   ```
 
 ## Final QA Checklist
 
+### Enforcement Mode Testing
+
 ```bash
-# Fresh OPNsense VM installation test
-# 1. Install plugin package
-pkg add os-yori-0.1.0.txz
+# 1. Fresh OPNsense VM installation
+pkg add os-yori-0.2.0.txz
 
-# 2. Verify files installed
-ls /usr/local/opnsense/mvc/app/controllers/OPNsense/YORI/
-ls /usr/local/etc/rc.d/yori
+# 2. Verify enforcement mode disabled by default
+cat /usr/local/etc/yori/yori.conf | grep "enforcement:"
+# Expected: enabled: false, consent_accepted: false
 
-# 3. Start YORI service from web UI
-# Navigate to: System → YORI → Service Management
-# Click: Start Service
+# 3. Try to enable enforcement without consent
+# Navigate to: System → YORI → Enforcement Settings
+# Expected: Cannot enable (consent checkbox required)
 
-# 4. Generate test LLM traffic
+# 4. Accept consent and enable enforcement
+# Check consent box
+# Click: Enable Enforcement
+# Expected: Mode changes to "enforce"
+
+# 5. Test policy blocking
+# Configure bedtime policy with action: block
+# Generate test traffic after 21:00
 curl -X POST http://router-ip:8443/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-4","messages":[{"role":"user","content":"test"}]}'
 
-# 5. Verify traffic logged
-sqlite3 /var/db/yori/audit.db "SELECT COUNT(*) FROM audit_events;"
-# Expected: >0
+# Expected: Block page returned, request NOT forwarded
+```
 
-# 6. Check dashboard displays data
+### Block Page Testing
+
+```bash
+# 6. Verify block page displays correctly
+# Send blocked request, capture response
+response=$(curl -s http://router-ip:8443/v1/chat/completions \
+  -X POST -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4"}')
+
+echo "$response" | grep "Request Blocked by YORI"
+# Expected: Block page HTML
+
+# 7. Test override mechanism
+# Enter correct password in block page
+# Expected: Request forwarded to LLM
+
+# 8. Test wrong password
+# Enter incorrect password
+# Expected: Block page shown again, attempt logged
+
+# 9. Test rate limiting
+# Try 4 wrong passwords in 1 minute
+# Expected: Locked out after 3 attempts
+```
+
+### Allowlist Testing
+
+```bash
+# 10. Add device to allowlist
+# Navigate to: System → YORI → Allowlist
+# Add: Dad's Laptop (192.168.1.100)
+
+# 11. Test allowlist bypass
+# Generate blocked request from allowlisted IP
+curl -X POST http://router-ip:8443/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "X-Forwarded-For: 192.168.1.100" \
+  -d '{"model":"gpt-4"}'
+
+# Expected: Request forwarded (NOT blocked)
+
+# 12. Test time-based exception
+# Configure: Mon-Fri 3pm-6pm for 192.168.1.102
+# Generate request at 4pm on Monday
+# Expected: Allowed (not blocked)
+
+# 13. Test emergency override
+# Navigate to: System → YORI → Emergency Override
+# Enter admin password, click: Disable All Enforcement
+# Expected: All policies bypassed, all requests allowed
+```
+
+### Audit Testing
+
+```bash
+# 14. Verify enforcement events logged
+sqlite3 /var/db/yori/audit.db "
+SELECT COUNT(*) FROM audit_events
+WHERE enforcement_action IS NOT NULL;
+"
+# Expected: >0 (enforcement events exist)
+
+# 15. Check enforcement dashboard
 # Navigate to: System → YORI → Dashboard
-# Expected: Charts show request data
+# Expected: Enforcement Status widget shows:
+#   - Total blocks
+#   - Overrides (success/fail)
+#   - Allowlist bypasses
 
-# 7. Test policy evaluation
-# Navigate to: System → YORI → Policies
-# Enable bedtime.rego policy
-# Generate traffic after 21:00
-# Expected: Alert appears in dashboard
+# 16. View enforcement timeline
+# Navigate to: System → YORI → Enforcement Timeline
+# Expected: Chronological list of blocks, overrides, bypasses
 
-# 8. Verify alert triggers
-# Check: Recent Alerts widget
-# Expected: Alert from bedtime policy
+# 17. Generate enforcement report
+# Navigate to: System → YORI → Reports
+# Click: Generate Weekly Enforcement Summary
+# Expected: PDF/HTML report downloads
+```
 
-# 9. Export audit logs to CSV
-# Navigate to: System → YORI → Audit Logs
-# Click: Export CSV
-# Expected: File downloads successfully
+### Performance Validation
 
-# 10. Validate performance
-# Run load test: ab -n 1000 -c 10 http://router-ip:8443/health
-# Expected: <10ms latency, >50 req/sec
+```bash
+# 18. Test enforcement performance
+wrk -t4 -c100 -d30s http://router-ip:8443/health
+# Expected: Still <10ms p95 latency (enforcement adds <1ms)
+
+# 19. Memory check
+ps aux | grep yori | awk '{print $6/1024 " MB"}'
+# Expected: Still <256MB RSS
+
+# 20. Load test with enforcement
+ab -n 1000 -c 10 http://router-ip:8443/v1/chat/completions
+# Expected: >50 req/sec (same as Phase 1)
 ```
 
 ## Release Artifacts
 
-**Files to Create:**
+**Files to Build:**
 
 1. **Rust Binary:**
    - `target/x86_64-unknown-freebsd/release/libyori_core.so`
-   - FreeBSD x86_64 shared library
-   - Size: <10MB (stripped)
+   - No changes from Phase 1 (enforcement is Python-side)
 
 2. **Python Wheel:**
-   - `dist/yori-0.1.0-py3-none-any.whl`
-   - Platform-independent wheel
-   - Includes Python proxy and dependencies
+   - `dist/yori-0.2.0-py3-none-any.whl`
+   - Includes enforcement, block-page, allowlist, enhanced-audit modules
 
 3. **OPNsense Package:**
-   - `opnsense/os-yori-0.1.0.txz`
-   - FreeBSD package with plugin, service, UI
-   - Size: <5MB
+   - `opnsense/os-yori-0.2.0.txz`
+   - Includes updated UI with enforcement settings
 
-4. **Documentation:**
-   - `README.md` - Included in package
-   - `CHANGELOG.md` - v0.1.0 release notes
-   - `LICENSE` - MIT license
+4. **Documentation Updates:**
+   - `docs/ENFORCEMENT_GUIDE.md` - New guide for enforcement mode
+   - `CHANGELOG.md` - v0.2.0 release notes
+   - `README.md` - Updated with enforcement features
 
 ## Release Process
 
 ```bash
-# On omnibus branch cz1/release/v0.1.0
+# On omnibus branch cz2/release/v0.2.0
 
-# 1. Create CHANGELOG.md
-cat > CHANGELOG.md <<'EOF'
-# Changelog
+# 1. Create/Update CHANGELOG.md
+cat >> CHANGELOG.md <<'EOF'
 
-## [0.1.0] - 2026-01-19
+## [0.2.0] - 2026-01-20
 
 ### Added
-- Transparent proxy for LLM traffic (OpenAI, Anthropic, Gemini, Mistral)
-- SQLite audit logging with 365-day retention
-- Rust-based policy engine (sark-opa integration)
-- OPNsense web UI (dashboard, audit viewer, policy editor)
-- Advisory alert system (email, web, push notifications)
-- 4+ pre-built policy templates (bedtime, high usage, privacy, homework)
-- Comprehensive documentation (installation, configuration, policy guide)
-- Performance: <10ms latency, <256MB RAM, 50 req/sec throughput
+- **Enforcement Mode** - Optional blocking of LLM requests
+  - Explicit user consent required
+  - Per-policy enforcement toggles (allow/alert/block)
+  - Mode switching UI (observe → advisory → enforce)
+- **Block Page** - Friendly explanation when requests are blocked
+  - Shows policy name, reason, timestamp
+  - Override mechanism with password authentication
+  - Rate limiting on override attempts (3/minute)
+- **Allowlist System** - Prevent blocking trusted devices
+  - Device allowlist (IP/MAC addresses)
+  - Time-based exceptions (allow 9am-5pm for homework)
+  - Emergency override (disable all enforcement instantly)
+- **Enhanced Audit** - Complete enforcement event logging
+  - Log all blocks, overrides, allowlist bypasses
+  - Enforcement dashboard widget
+  - Enforcement timeline view
+  - Weekly enforcement summary reports
+
+### Changed
+- SQLite schema extended with enforcement columns
+- Dashboard updated with enforcement metrics
+- Configuration expanded with enforcement settings
 
 ### Performance
-- Latency overhead: <10ms (p95)
-- Memory usage: <256MB RSS
-- Throughput: >50 requests/sec
-- SQLite queries: <100ms (100k+ records)
+- Enforcement adds <1ms latency (still <10ms total p95)
+- Memory usage unchanged (<256MB RSS)
+- Block decision: <1ms (faster than proxying)
 
-### Testing
-- Code coverage: >80% (Rust and Python)
-- All tests passing (unit, integration, e2e)
-- Performance benchmarks validated
+### Security
+- Enforcement disabled by default (safe)
+- Explicit consent required to enable
+- Override passwords stored as hashes
+- Rate limiting prevents brute force
+- All enforcement events audited
 
-[0.1.0]: https://github.com/apathy-ca/yori/releases/tag/v0.1.0
+[0.2.0]: https://github.com/apathy-ca/yori/releases/tag/v0.2.0
 EOF
 
 # 2. Update version in files
-# - Cargo.toml: version = "0.1.0"
-# - pyproject.toml: version = "0.1.0"
-# - opnsense/+MANIFEST: version = "0.1.0"
+# - pyproject.toml: version = "0.2.0"
+# - opnsense/+MANIFEST: version = "0.2.0"
 
-# 3. Commit final changes
-git add CHANGELOG.md Cargo.toml pyproject.toml opnsense/+MANIFEST
-git commit -m "chore: Prepare v0.1.0 release"
+# 3. Create ENFORCEMENT_GUIDE.md
+cat > docs/ENFORCEMENT_GUIDE.md <<'EOF'
+# YORI Enforcement Mode Guide
 
-# 4. Merge to main
+## Overview
+
+Enforcement mode allows YORI to actually block LLM requests based on policies.
+This is an **opt-in feature** requiring explicit user consent.
+
+## Enabling Enforcement
+
+1. Navigate to: System → YORI → Enforcement Settings
+2. Read the warning about potential functionality breakage
+3. Check: "I understand and accept the risks"
+4. Click: Enable Enforcement
+5. Set per-policy actions (allow/alert/block)
+
+## Per-Policy Enforcement
+
+Each policy can have different actions:
+- **Allow:** Always allow (no enforcement)
+- **Alert:** Log and alert, but don't block
+- **Block:** Actually block the request
+
+## Allowlist
+
+Prevent blocking trusted devices:
+1. Navigate to: System → YORI → Allowlist
+2. Add devices by IP or MAC address
+3. Devices on allowlist bypass all policies
+
+## Emergency Override
+
+Disable all enforcement instantly:
+1. Navigate to: System → YORI → Emergency Override
+2. Enter admin password
+3. Click: Disable All Enforcement
+4. All requests allowed until re-enabled
+
+## See Also
+- Configuration Guide (CONFIGURATION.md)
+- Policy Guide (POLICY_GUIDE.md)
+- Troubleshooting (TROUBLESHOOTING.md)
+EOF
+
+# 4. Commit final changes
+git add CHANGELOG.md docs/ENFORCEMENT_GUIDE.md pyproject.toml opnsense/+MANIFEST
+git commit -m "chore: Prepare v0.2.0 release with enforcement mode"
+
+# 5. Merge to main
 git checkout main
-git merge cz1/release/v0.1.0 --no-ff -m "Release: v0.1.0"
+git merge cz2/release/v0.2.0 --no-ff -m "Release: v0.2.0 - Enforcement Mode"
 
-# 5. Tag release
-git tag -a v0.1.0 -m "YORI v0.1.0: Home LLM Gateway
+# 6. Tag release
+git tag -a v0.2.0 -m "YORI v0.2.0: Enforcement Mode
 
-Zero-trust LLM governance for home networks.
+Optional blocking of LLM requests with allowlist and override.
 
-Features:
-- Transparent proxy for LLM APIs
-- SQLite audit logging
-- Policy-based governance
-- OPNsense integration
-- Advisory alerts
+New Features:
+- Enforcement mode (opt-in)
+- Block page with friendly explanation
+- Device allowlist and time exceptions
+- Emergency override mechanism
+- Enhanced audit logging
 
-Performance:
-- <10ms latency overhead
-- <256MB memory usage
-- 50+ req/sec throughput
+Security:
+- Disabled by default
+- Explicit consent required
+- Password-protected overrides
+- Complete audit trail
 
-See CHANGELOG.md for full details."
+See CHANGELOG.md and docs/ENFORCEMENT_GUIDE.md for details."
 
-# 6. Create GitHub release
-gh release create v0.1.0 \
-  --title "YORI v0.1.0: Home LLM Gateway" \
+# 7. Create GitHub release
+gh release create v0.2.0 \
+  --title "YORI v0.2.0: Enforcement Mode" \
   --notes-file CHANGELOG.md \
-  target/x86_64-unknown-freebsd/release/libyori_core.so \
-  dist/yori-0.1.0-py3-none-any.whl \
-  opnsense/os-yori-0.1.0.txz
+  dist/yori-0.2.0-py3-none-any.whl \
+  opnsense/os-yori-0.2.0.txz
 
-# 7. Publish to GitHub (no push yet per user request)
-# git push origin main --tags  # SKIP: User said no push
+# 8. Publish to GitHub (no push per user preference)
+# git push origin main --tags  # SKIP: User preference
 ```
 
 ## Success Criteria
 
-- [ ] All 7 worker branches merged to cz1/release/v0.1.0
+- [ ] All 4 Phase 2 worker branches merged to cz2/release/v0.2.0
 - [ ] All merge conflicts resolved
 - [ ] All tests passing on integrated codebase (100% success rate)
+- [ ] Enforcement mode functional:
+  - [ ] Requests can be blocked by policies
+  - [ ] Block page displays correctly
+  - [ ] Override mechanism works (password auth)
+  - [ ] Allowlist bypasses enforcement
+  - [ ] Emergency override disables all policies
 - [ ] Release artifacts built successfully:
-  - [ ] Rust binary (libyori_core.so, <10MB)
-  - [ ] Python wheel (yori-0.1.0-py3-none-any.whl)
-  - [ ] OPNsense package (os-yori-0.1.0.txz, <5MB)
+  - [ ] Python wheel (yori-0.2.0-py3-none-any.whl)
+  - [ ] OPNsense package (os-yori-0.2.0.txz)
 - [ ] Fresh installation tested on OPNsense VM
-- [ ] All features functional (proxy, logging, policies, alerts, dashboard)
-- [ ] Performance targets validated (<10ms, <256MB, 50 req/sec)
-- [ ] Documentation complete and accurate
-- [ ] CHANGELOG.md created for v0.1.0
-- [ ] Version updated in all files (Cargo.toml, pyproject.toml, +MANIFEST)
-- [ ] omnibus branch merged to main
-- [ ] v0.1.0 tagged
+- [ ] All enforcement features functional
+- [ ] Performance targets maintained (<10ms, <256MB, 50 req/sec)
+- [ ] Documentation updated (CHANGELOG, ENFORCEMENT_GUIDE)
+- [ ] Version updated in all files
+- [ ] v0.2.0 tagged
 - [ ] GitHub release created with artifacts
-- [ ] Code committed to branch cz1/release/v0.1.0
-- [ ] Ready for OPNsense plugins repository submission
+- [ ] Code committed to branch cz2/release/v0.2.0
+- [ ] Ready for v0.2.0 deployment
+
+## Post-Release
+
+### Monitoring
+- Track enforcement mode adoption (how many enable it)
+- Monitor override usage (are users overriding often?)
+- Check for false positives (allowlist additions)
+- Gather user feedback on block page UX
+
+### Future Enhancements (v0.3.0+)
+Based on PROJECT_PLAN.md future roadmap:
+- v1.1.0: OpenSearch integration
+- v1.2.0: Local LLM support (Ollama)
+- v1.3.0: Multi-router federation
+- v1.4.0: Advanced threat detection (prompt injection, secrets)
+
+---
+
+**End of Phase 2 Integration Worker**
