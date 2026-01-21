@@ -5,9 +5,11 @@ Loads configuration from YAML files and provides type-safe access.
 """
 
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 import yaml
+
+from yori.models import EnforcementConfig
 
 
 class EndpointConfig(BaseModel):
@@ -54,6 +56,7 @@ class YoriConfig(BaseModel):
 
     audit: AuditConfig = Field(default_factory=AuditConfig)
     policies: PolicyConfig = Field(default_factory=PolicyConfig)
+    enforcement: Optional[EnforcementConfig] = Field(default_factory=EnforcementConfig)
 
     @classmethod
     def from_yaml(cls, path: Path) -> "YoriConfig":

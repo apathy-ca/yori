@@ -1,0 +1,144 @@
+# YORI Configuration Example
+# Zero-trust LLM governance for home networks
+
+# Operation mode: observe, advisory, or enforce
+mode: observe
+
+# Listen address for proxy server
+listen: "0.0.0.0:8443"
+
+# LLM endpoints to intercept
+endpoints:
+  - domain: "api.openai.com"
+    enabled: true
+  - domain: "api.anthropic.com"
+    enabled: true
+  - domain: "gemini.google.com"
+    enabled: true
+  - domain: "api.mistral.ai"
+    enabled: true
+
+# Audit logging configuration
+audit:
+  database: "/var/db/yori/audit.db"
+  retention_days: 365
+
+# Policy engine configuration
+policies:
+  directory: "/usr/local/etc/yori/policies"
+  default: "home_default.rego"
+
+# Enforcement mode configuration
+enforcement:
+  # Whether enforcement mode is active (blocks violating requests)
+  enabled: false
+
+  # User must accept consent warning before enforcement is enabled
+  consent_accepted: false
+
+  # Allowlist configuration
+  allowlist:
+    # Devices that bypass enforcement
+    devices:
+      - ip: "192.168.1.100"
+        name: "Dad's Laptop"
+        mac: "aa:bb:cc:dd:ee:ff"
+        enabled: true
+        permanent: true  # Never block, even if disabled
+        group: "family"
+        notes: "Primary admin device"
+
+      - ip: "192.168.1.101"
+        name: "Work Desktop"
+        mac: "11:22:33:44:55:66"
+        enabled: true
+        permanent: false
+        group: "work"
+        notes: "Work-from-home setup"
+
+      - ip: "192.168.1.102"
+        name: "Kid's Laptop"
+        mac: "77:88:99:aa:bb:cc"
+        enabled: true
+        permanent: false
+        group: "family"
+        # Temporary allowlist (expires after this time)
+        expires_at: null
+        notes: "Has time-based restrictions"
+
+    # Device groups for easier management
+    groups:
+      - name: "family"
+        description: "Family member devices"
+        device_ips:
+          - "192.168.1.100"
+          - "192.168.1.102"
+        enabled: true
+
+      - name: "work"
+        description: "Work devices"
+        device_ips:
+          - "192.168.1.101"
+        enabled: true
+
+    # Time-based exceptions (allow access during specific hours)
+    time_exceptions:
+      - name: "homework_hours"
+        description: "Allow LLM access for homework help"
+        days:
+          - "monday"
+          - "tuesday"
+          - "wednesday"
+          - "thursday"
+          - "friday"
+        start_time: "15:00"  # 3:00 PM
+        end_time: "18:00"    # 6:00 PM
+        device_ips:
+          - "192.168.1.102"  # Kid's Laptop
+        enabled: true
+
+      - name: "weekend_access"
+        description: "Relaxed access on weekends"
+        days:
+          - "saturday"
+          - "sunday"
+        start_time: "09:00"  # 9:00 AM
+        end_time: "21:00"    # 9:00 PM
+        device_ips:
+          - "192.168.1.102"
+        enabled: true
+
+  # Emergency override to disable all enforcement
+  emergency_override:
+    # Whether override is currently active (set via UI)
+    enabled: false
+
+    # SHA-256 hash of admin password (set this via UI or CLI)
+    # Use: python3 -c "from yori.emergency import hash_password; print(hash_password('your_password'))"
+    password_hash: "sha256:5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"  # "password"
+
+    # Whether password is required to activate override
+    require_password: true
+
+    # Metadata (set automatically when override is activated)
+    activated_at: null
+    activated_by: null
+
+# Example temporary allowlist entry (expires after 1 hour)
+# You can add these via the UI or API:
+#
+#   - ip: "192.168.1.200"
+#     name: "Guest Device"
+#     enabled: true
+#     expires_at: "2026-01-20T16:00:00"  # ISO 8601 format
+#     notes: "Visitor for afternoon meeting"
+
+# Example overnight time exception (22:00 - 02:00)
+#
+#   - name: "late_night_work"
+#     description: "Late night coding sessions"
+#     days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+#     start_time: "22:00"
+#     end_time: "02:00"
+#     device_ips: ["192.168.1.101"]
+#     enabled: true

@@ -5,12 +5,26 @@ FastAPI-based transparent proxy for LLM traffic interception.
 """
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 import httpx
 import logging
+import uuid
 from typing import Optional
+from datetime import datetime
 
 from yori.config import YoriConfig
+from yori.models import PolicyResult, EnforcementDecision
+from yori.enforcement import should_enforce_policy
+from yori.consent import validate_enforcement_consent
+from yori.block_page import render_block_page
+from yori.override import (
+    validate_override_password,
+    validate_emergency_override,
+    check_override_rate_limit,
+    reset_override_rate_limit,
+    create_override_event,
+    log_override_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +37,13 @@ class ProxyServer:
         self.app = FastAPI(
             title="YORI LLM Gateway",
             description="Zero-trust LLM governance for home networks",
-            version="0.1.0",
+            version="0.2.0",
         )
         self._setup_routes()
         self._client: Optional[httpx.AsyncClient] = None
+
+        # Validate consent on startup
+        self._validate_consent_on_startup()
 
     def _setup_routes(self):
         """Set up proxy routes"""
@@ -38,27 +55,227 @@ class ProxyServer:
                 "status": "healthy",
                 "mode": self.config.mode,
                 "endpoints": len(self.config.endpoints),
+                "enforcement_enabled": self.config.enforcement.enabled if self.config.enforcement else False,
             }
+
+        @self.app.post("/yori/override")
+        async def handle_override(request: Request):
+            """Handle override password submission"""
+            client_ip = request.client.host if request.client else "unknown"
+
+            # Check rate limiting
+            if not check_override_rate_limit(client_ip):
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "success": False,
+                        "message": "Too many override attempts. Please wait before trying again.",
+                    },
+                )
+
+            # Parse request body
+            try:
+                body = await request.json()
+                password = body.get("password", "")
+                request_id = body.get("request_id", "")
+                policy_name = body.get("policy_name", "")
+                emergency = body.get("emergency", False)
+            except Exception as e:
+                logger.error(f"Failed to parse override request: {e}")
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "message": "Invalid request format",
+                    },
+                )
+
+            # Validate password
+            if not self.config.enforcement.override_enabled:
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "success": False,
+                        "message": "Override feature is disabled",
+                    },
+                )
+
+            # Check emergency override first
+            if emergency:
+                admin_token_hash = self.config.enforcement.admin_token_hash
+                if admin_token_hash and validate_emergency_override(password, admin_token_hash):
+                    # Log successful emergency override
+                    event = create_override_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        policy_name=policy_name,
+                        password=password,
+                        success=True,
+                        emergency=True,
+                    )
+                    log_override_event(event)
+                    reset_override_rate_limit(client_ip)
+
+                    return JSONResponse(
+                        content={
+                            "success": True,
+                            "message": "Emergency override granted",
+                        }
+                    )
+
+            # Check regular override password
+            password_hash = self.config.enforcement.override_password_hash
+            if password_hash and validate_override_password(password, password_hash):
+                # Log successful override
+                event = create_override_event(
+                    request_id=request_id,
+                    client_ip=client_ip,
+                    policy_name=policy_name,
+                    password=password,
+                    success=True,
+                    emergency=False,
+                )
+                log_override_event(event)
+                reset_override_rate_limit(client_ip)
+
+                return JSONResponse(
+                    content={
+                        "success": True,
+                        "message": "Override successful",
+                    }
+                )
+
+            # Log failed override
+            event = create_override_event(
+                request_id=request_id,
+                client_ip=client_ip,
+                policy_name=policy_name,
+                password=password,
+                success=False,
+                emergency=emergency,
+            )
+            log_override_event(event)
+
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "success": False,
+                    "message": "Invalid override password",
+                },
+            )
 
         @self.app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
         async def proxy_request(request: Request, path: str):
             """Proxy all requests to real LLM endpoints"""
-            # TODO: Implement actual proxy logic
-            # 1. Extract request details
-            # 2. Evaluate policy
-            # 3. Log to audit database
-            # 4. Forward to real endpoint (if allowed)
-            # 5. Log response
-            # 6. Return response
+            # Generate unique request ID
+            request_id = str(uuid.uuid4())
+            client_ip = request.client.host if request.client else "unknown"
 
+            # Extract request body for policy evaluation
+            try:
+                body = await request.body()
+                request_data = await request.json() if body else {}
+            except Exception as e:
+                logger.error(f"Failed to parse request body: {e}")
+                request_data = {}
+
+            # Check for override header (from successful override)
+            override_password = request.headers.get("X-YORI-Override", "")
+            has_override = False
+
+            if override_password:
+                password_hash = self.config.enforcement.override_password_hash
+                admin_token_hash = self.config.enforcement.admin_token_hash
+
+                # Check regular or emergency override
+                if (password_hash and validate_override_password(override_password, password_hash)) or \
+                   (admin_token_hash and validate_emergency_override(override_password, admin_token_hash)):
+                    has_override = True
+                    logger.info(f"Request {request_id} has valid override")
+
+            # TODO Phase 1: Implement policy evaluation
+            # For now, create a mock policy result for enforcement testing
+            # In Phase 1, this will call yori_core.evaluate_policy()
+            mock_policy_result = PolicyResult(
+                allowed=True,  # This would come from policy evaluation
+                policy_name="test_policy",
+                reason="Mock policy result - Phase 1 will implement real evaluation",
+                violations=[],
+            )
+
+            # Check enforcement decision (skip if override is valid)
+            if not has_override:
+                enforcement_decision = should_enforce_policy(
+                    request={
+                        "method": request.method,
+                        "path": path,
+                        "headers": dict(request.headers),
+                        "body": request_data,
+                    },
+                    policy_result=mock_policy_result,
+                    client_ip=client_ip,
+                    config=self.config,
+                )
+
+                # If should enforce (block), return block page
+                if enforcement_decision.enforce:
+                    logger.warning(
+                        f"BLOCKED request {request_id} from {client_ip} to {path}: "
+                        f"{enforcement_decision.reason}"
+                    )
+                    # Create a compatible decision object for block page
+                    # The block_page module expects certain fields
+                    block_decision = type('obj', (object,), {
+                        'should_block': True,
+                        'policy_name': mock_policy_result.policy_name,
+                        'reason': enforcement_decision.reason,
+                        'timestamp': datetime.now(),
+                        'allow_override': True,
+                        'request_id': request_id,
+                    })()
+                    html = render_block_page(block_decision)
+                    return HTMLResponse(content=html, status_code=403)
+
+                # Log allowed status
+                logger.info(
+                    f"Request {request_id} from {client_ip} to {path}: allowed "
+                    f"(bypass: {enforcement_decision.bypass_type or 'none'})"
+                )
+
+            # TODO Phase 1: Forward to real endpoint if not blocked
+            # For now, return a placeholder response
             return JSONResponse(
                 status_code=501,
                 content={
-                    "error": "Proxy not yet implemented",
+                    "error": "Proxy forwarding not yet implemented (Phase 1)",
+                    "request_id": request_id,
                     "mode": self.config.mode,
                     "path": path,
                 },
             )
+
+    def _validate_consent_on_startup(self):
+        """Validate consent configuration on startup"""
+        result = validate_enforcement_consent(self.config)
+
+        if not result.valid:
+            logger.error("=" * 80)
+            logger.error("ENFORCEMENT MODE CONFIGURATION ERROR")
+            logger.error("=" * 80)
+            for error in result.errors:
+                logger.error(f"  - {error.value}")
+            logger.error("")
+            logger.error("Enforcement mode will NOT be active due to consent errors.")
+            logger.error("=" * 80)
+
+        for warning in result.warnings:
+            logger.warning(f"Configuration warning: {warning}")
+
+        if self.config.enforcement and self.config.enforcement.enabled and self.config.enforcement.consent_accepted:
+            logger.warning("=" * 80)
+            logger.warning("ENFORCEMENT MODE IS ACTIVE")
+            logger.warning("Requests WILL be blocked based on policy configuration.")
+            logger.warning("=" * 80)
 
     async def startup(self):
         """Initialize proxy server resources"""

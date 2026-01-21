@@ -16,7 +16,7 @@ Example:
     ... })
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "James Henry <jamesrahenry@henrynet.ca>"
 
 # Import Rust core components (will be available after maturin build)
@@ -30,12 +30,20 @@ except ImportError:
 # Import Python components
 from yori.config import YoriConfig
 from yori.proxy import ProxyServer
+from yori.models import EnforcementDecision, PolicyResult
+from yori.enforcement import should_enforce_policy
+from yori.consent import ConsentValidator, validate_enforcement_consent
 
 __all__ = [
     "PolicyEngine",
     "Cache",
     "YoriConfig",
     "ProxyServer",
+    "EnforcementDecision",
+    "PolicyResult",
+    "should_enforce_policy",
+    "ConsentValidator",
+    "validate_enforcement_consent",
     "__version__",
     "__author__",
 ]
