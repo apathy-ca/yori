@@ -16,7 +16,7 @@ Example:
     ... })
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "James Henry <jamesrahenry@henrynet.ca>"
 
 # Import Rust core components (will be available after maturin build)
