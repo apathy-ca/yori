@@ -13,7 +13,8 @@ from typing import Optional
 from datetime import datetime
 
 from yori.config import YoriConfig
-from yori.enforcement import EnforcementEngine, PolicyResult
+from yori.models import PolicyResult, EnforcementDecision
+from yori.enforcement import should_enforce_policy
 from yori.consent import validate_enforcement_consent
 from yori.block_page import render_block_page
 from yori.override import (
@@ -33,7 +34,6 @@ class ProxyServer:
 
     def __init__(self, config: YoriConfig):
         self.config = config
-        self.enforcement_engine = EnforcementEngine(config)
         self.app = FastAPI(
             title="YORI LLM Gateway",
             description="Zero-trust LLM governance for home networks",
@@ -55,7 +55,7 @@ class ProxyServer:
                 "status": "healthy",
                 "mode": self.config.mode,
                 "endpoints": len(self.config.endpoints),
-                "enforcement_enabled": self.enforcement_engine._is_enforcement_enabled(),
+                "enforcement_enabled": self.config.enforcement.enabled if self.config.enforcement else False,
             }
 
         @self.app.post("/yori/override")
@@ -197,15 +197,15 @@ class ProxyServer:
             # For now, create a mock policy result for enforcement testing
             # In Phase 1, this will call yori_core.evaluate_policy()
             mock_policy_result = PolicyResult(
-                action="alert",  # This would come from policy evaluation
-                reason="Mock policy result - Phase 1 will implement real evaluation",
+                allowed=True,  # This would come from policy evaluation
                 policy_name="test_policy",
-                metadata={"timestamp": datetime.now().isoformat()},
+                reason="Mock policy result - Phase 1 will implement real evaluation",
+                violations=[],
             )
 
             # Check enforcement decision (skip if override is valid)
             if not has_override:
-                enforcement_decision = self.enforcement_engine.should_enforce_policy(
+                enforcement_decision = should_enforce_policy(
                     request={
                         "method": request.method,
                         "path": path,
@@ -214,25 +214,32 @@ class ProxyServer:
                     },
                     policy_result=mock_policy_result,
                     client_ip=client_ip,
+                    config=self.config,
                 )
 
-                # Set request ID for tracking
-                enforcement_decision.request_id = request_id
-
-                # If should block, return block page
-                if enforcement_decision.should_block:
+                # If should enforce (block), return block page
+                if enforcement_decision.enforce:
                     logger.warning(
                         f"BLOCKED request {request_id} from {client_ip} to {path}: "
-                        f"{enforcement_decision.policy_name} - {enforcement_decision.reason}"
+                        f"{enforcement_decision.reason}"
                     )
-                    # Render and return block page
-                    html = render_block_page(enforcement_decision)
+                    # Create a compatible decision object for block page
+                    # The block_page module expects certain fields
+                    block_decision = type('obj', (object,), {
+                        'should_block': True,
+                        'policy_name': mock_policy_result.policy_name,
+                        'reason': enforcement_decision.reason,
+                        'timestamp': datetime.now(),
+                        'allow_override': True,
+                        'request_id': request_id,
+                    })()
+                    html = render_block_page(block_decision)
                     return HTMLResponse(content=html, status_code=403)
 
-                # Log allowed/alert status
+                # Log allowed status
                 logger.info(
-                    f"Request {request_id} from {client_ip} to {path}: {enforcement_decision.action_taken} "
-                    f"(policy: {enforcement_decision.policy_name})"
+                    f"Request {request_id} from {client_ip} to {path}: allowed "
+                    f"(bypass: {enforcement_decision.bypass_type or 'none'})"
                 )
 
             # TODO Phase 1: Forward to real endpoint if not blocked
@@ -264,7 +271,7 @@ class ProxyServer:
         for warning in result.warnings:
             logger.warning(f"Configuration warning: {warning}")
 
-        if self.enforcement_engine._is_enforcement_enabled():
+        if self.config.enforcement and self.config.enforcement.enabled and self.config.enforcement.consent_accepted:
             logger.warning("=" * 80)
             logger.warning("ENFORCEMENT MODE IS ACTIVE")
             logger.warning("Requests WILL be blocked based on policy configuration.")

@@ -5,9 +5,11 @@ Loads configuration from YAML files and provides type-safe access.
 """
 
 from pathlib import Path
-from typing import List, Literal, Dict
+from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 import yaml
+
+from yori.models import EnforcementConfig
 
 
 class EndpointConfig(BaseModel):
@@ -26,28 +28,6 @@ class AuditConfig(BaseModel):
     retention_days: int = Field(default=365, description="How long to keep audit logs")
 
 
-class EnforcementConfig(BaseModel):
-    """Enforcement mode configuration"""
-
-    enabled: bool = Field(
-        default=False, description="Whether enforcement mode is enabled (requires consent)"
-    )
-    consent_accepted: bool = Field(
-        default=False,
-        description="Whether user has accepted enforcement mode risks (required to enable)",
-    )
-
-
-class PolicyFileConfig(BaseModel):
-    """Configuration for an individual policy file"""
-
-    enabled: bool = Field(default=True, description="Whether this policy is enabled")
-    action: Literal["allow", "alert", "block"] = Field(
-        default="alert",
-        description="Action to take when policy triggers (allow=pass through, alert=log only, block=deny request)",
-    )
-
-
 class PolicyConfig(BaseModel):
     """Policy engine configuration"""
 
@@ -55,30 +35,6 @@ class PolicyConfig(BaseModel):
         default=Path("/usr/local/etc/yori/policies"), description="Directory containing .rego files"
     )
     default: str = Field(default="home_default.rego", description="Default policy file")
-    files: Dict[str, PolicyFileConfig] = Field(
-        default_factory=dict,
-        description="Per-policy configuration (key is policy filename without .rego)",
-    )
-
-
-class EnforcementConfig(BaseModel):
-    """Enforcement and override configuration"""
-
-    override_enabled: bool = Field(
-        default=True, description="Enable password-based override for blocked requests"
-    )
-    override_password_hash: str = Field(
-        default="", description="SHA-256 hash of override password (format: sha256:hexdigest)"
-    )
-    override_rate_limit: int = Field(
-        default=3, description="Maximum override attempts per minute per IP"
-    )
-    admin_token_hash: str = Field(
-        default="", description="SHA-256 hash of emergency admin override token"
-    )
-    custom_messages: dict = Field(
-        default_factory=dict, description="Custom block messages per policy name"
-    )
 
 
 class YoriConfig(BaseModel):
@@ -100,7 +56,7 @@ class YoriConfig(BaseModel):
 
     audit: AuditConfig = Field(default_factory=AuditConfig)
     policies: PolicyConfig = Field(default_factory=PolicyConfig)
-    enforcement: EnforcementConfig = Field(default_factory=EnforcementConfig)
+    enforcement: Optional[EnforcementConfig] = Field(default_factory=EnforcementConfig)
 
     @classmethod
     def from_yaml(cls, path: Path) -> "YoriConfig":

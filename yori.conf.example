@@ -1,96 +1,144 @@
 # YORI Configuration Example
-# Copy to /usr/local/etc/yori/yori.conf or /etc/yori/yori.conf
+# Zero-trust LLM governance for home networks
 
 # Operation mode: observe, advisory, or enforce
-# - observe: Log all requests, never block (safe default)
-# - advisory: Show alerts but don't block
-# - enforce: Actually block requests based on policies (requires enforcement.enabled=true)
 mode: observe
 
-# Listen address and port
+# Listen address for proxy server
 listen: "0.0.0.0:8443"
 
 # LLM endpoints to intercept
 endpoints:
-  - domain: api.openai.com
+  - domain: "api.openai.com"
     enabled: true
-  - domain: api.anthropic.com
+  - domain: "api.anthropic.com"
     enabled: true
-  - domain: gemini.google.com
+  - domain: "gemini.google.com"
     enabled: true
-  - domain: api.mistral.ai
+  - domain: "api.mistral.ai"
     enabled: true
 
-# Audit logging
+# Audit logging configuration
 audit:
-  database: /var/db/yori/audit.db
+  database: "/var/db/yori/audit.db"
   retention_days: 365
 
-# Policy engine
+# Policy engine configuration
 policies:
-  directory: /usr/local/etc/yori/policies
-  default: home_default.rego
+  directory: "/usr/local/etc/yori/policies"
+  default: "home_default.rego"
 
-  # Per-policy configuration
-  # Key is the policy filename without .rego extension
-  files:
-    bedtime:
-      enabled: true
-      action: alert  # allow | alert | block
-
-    privacy:
-      enabled: true
-      action: alert
-
-    content_filter:
-      enabled: true
-      action: alert
-
-    token_limit:
-      enabled: true
-      action: alert
-
-    model_restrictions:
-      enabled: false
-      action: allow
-
-# Enforcement mode (DANGEROUS - can break LLM functionality)
-# WARNING: Enabling enforcement mode will actually block requests.
-# This can break applications and services that rely on LLM APIs.
-# Only enable if you understand the risks and have reviewed your policies.
+# Enforcement mode configuration
 enforcement:
-  # Must be explicitly enabled (requires consent_accepted=true)
+  # Whether enforcement mode is active (blocks violating requests)
   enabled: false
 
-  # User must explicitly accept the risks of enforcement mode
-  # This prevents accidental enabling of blocking behavior
+  # User must accept consent warning before enforcement is enabled
   consent_accepted: false
 
-  # BEFORE ENABLING:
-  # 1. Test all policies in "observe" mode first
-  # 2. Review audit logs to understand what would be blocked
-  # 3. Configure per-policy actions (above) carefully
-  # 4. Set mode to "enforce" (above)
-  # 5. Set both enabled=true and consent_accepted=true (here)
+  # Allowlist configuration
+  allowlist:
+    # Devices that bypass enforcement
+    devices:
+      - ip: "192.168.1.100"
+        name: "Dad's Laptop"
+        mac: "aa:bb:cc:dd:ee:ff"
+        enabled: true
+        permanent: true  # Never block, even if disabled
+        group: "family"
+        notes: "Primary admin device"
 
-  # Enable password-based override for blocked requests
-  override_enabled: true
+      - ip: "192.168.1.101"
+        name: "Work Desktop"
+        mac: "11:22:33:44:55:66"
+        enabled: true
+        permanent: false
+        group: "work"
+        notes: "Work-from-home setup"
 
-  # SHA-256 hash of override password
-  # To generate: python3 -c "import hashlib; print('sha256:' + hashlib.sha256(b'your_password').hexdigest())"
-  # Example below is hash of 'test123' (DO NOT USE IN PRODUCTION)
-  override_password_hash: "sha256:ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae"
+      - ip: "192.168.1.102"
+        name: "Kid's Laptop"
+        mac: "77:88:99:aa:bb:cc"
+        enabled: true
+        permanent: false
+        group: "family"
+        # Temporary allowlist (expires after this time)
+        expires_at: null
+        notes: "Has time-based restrictions"
 
-  # Maximum override attempts per minute per IP
-  override_rate_limit: 3
+    # Device groups for easier management
+    groups:
+      - name: "family"
+        description: "Family member devices"
+        device_ips:
+          - "192.168.1.100"
+          - "192.168.1.102"
+        enabled: true
 
-  # SHA-256 hash of emergency admin override token (for bypassing all policies)
-  # Leave empty to disable emergency override
-  admin_token_hash: ""
+      - name: "work"
+        description: "Work devices"
+        device_ips:
+          - "192.168.1.101"
+        enabled: true
 
-  # Custom block messages per policy (optional)
-  custom_messages:
-    bedtime.rego: "LLM access is restricted after bedtime. Please try again tomorrow morning."
-    privacy.rego: "This request may contain sensitive information. Please review your prompt."
-    rate_limit.rego: "You've exceeded your request limit. Please wait before trying again."
-    content_filter.rego: "Your request was flagged by content filters. Please modify your prompt."
+    # Time-based exceptions (allow access during specific hours)
+    time_exceptions:
+      - name: "homework_hours"
+        description: "Allow LLM access for homework help"
+        days:
+          - "monday"
+          - "tuesday"
+          - "wednesday"
+          - "thursday"
+          - "friday"
+        start_time: "15:00"  # 3:00 PM
+        end_time: "18:00"    # 6:00 PM
+        device_ips:
+          - "192.168.1.102"  # Kid's Laptop
+        enabled: true
+
+      - name: "weekend_access"
+        description: "Relaxed access on weekends"
+        days:
+          - "saturday"
+          - "sunday"
+        start_time: "09:00"  # 9:00 AM
+        end_time: "21:00"    # 9:00 PM
+        device_ips:
+          - "192.168.1.102"
+        enabled: true
+
+  # Emergency override to disable all enforcement
+  emergency_override:
+    # Whether override is currently active (set via UI)
+    enabled: false
+
+    # SHA-256 hash of admin password (set this via UI or CLI)
+    # Use: python3 -c "from yori.emergency import hash_password; print(hash_password('your_password'))"
+    password_hash: "sha256:5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"  # "password"
+
+    # Whether password is required to activate override
+    require_password: true
+
+    # Metadata (set automatically when override is activated)
+    activated_at: null
+    activated_by: null
+
+# Example temporary allowlist entry (expires after 1 hour)
+# You can add these via the UI or API:
+#
+#   - ip: "192.168.1.200"
+#     name: "Guest Device"
+#     enabled: true
+#     expires_at: "2026-01-20T16:00:00"  # ISO 8601 format
+#     notes: "Visitor for afternoon meeting"
+
+# Example overnight time exception (22:00 - 02:00)
+#
+#   - name: "late_night_work"
+#     description: "Late night coding sessions"
+#     days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+#     start_time: "22:00"
+#     end_time: "02:00"
+#     device_ips: ["192.168.1.101"]
+#     enabled: true

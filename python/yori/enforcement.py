@@ -1,234 +1,135 @@
 """
-Enforcement Mode Logic
+Enforcement decision logic
 
-Determines whether requests should be blocked based on policy evaluation results
-and enforcement configuration. This module is the core decision engine for
-enforcement mode.
+Determines whether to enforce policy results based on allowlist, time exceptions,
+and emergency override settings.
 """
 
-from dataclasses import dataclass
-from datetime import datetime
 from typing import Optional
 import logging
 
-from yori.config import YoriConfig, PolicyFileConfig
+from yori.models import PolicyResult, EnforcementDecision
+from yori.config import YoriConfig
+from yori.allowlist import is_allowlisted
+from yori.time_exceptions import check_any_exception_active
+from yori.emergency import is_emergency_override_active
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class PolicyResult:
-    """
-    Result from policy evaluation (from yori_core Rust module).
-    This is a placeholder until the Rust binding is available.
-    """
-
-    action: str  # "allow", "alert", or "block" (from policy evaluation)
-    reason: str  # Human-readable reason for the decision
-    policy_name: str  # Name of the policy that triggered
-    metadata: Optional[dict] = None  # Additional context
-
-
-@dataclass
-class EnforcementDecision:
-    """
-    Decision about whether to enforce (block) a request.
-    Used by proxy to determine if request should be blocked.
-    """
-
-    should_block: bool  # Whether to actually block the request
-    policy_name: str  # Name of the policy that made the decision
-    reason: str  # Human-readable reason
-    timestamp: datetime  # When the decision was made
-    allow_override: bool  # Whether user can override the block (future: allowlist)
-    action_taken: str  # "allow", "alert", or "block" - what we actually did
-    request_id: Optional[str] = None  # Request ID for tracking
-
-    def to_dict(self) -> dict:
-        """Convert decision to dictionary for serialization"""
-        return {
-            "should_block": self.should_block,
-            "policy_name": self.policy_name,
-            "reason": self.reason,
-            "timestamp": self.timestamp.isoformat(),
-            "allow_override": self.allow_override,
-            "action_taken": self.action_taken,
-            "request_id": self.request_id,
-        }
-
-
-class EnforcementEngine:
-    """
-    Enforcement decision engine.
-
-    Determines whether requests should be blocked based on:
-    1. Global enforcement mode settings
-    2. Per-policy action configuration
-    3. Policy evaluation results
-    """
-
-    def __init__(self, config: YoriConfig):
-        self.config = config
-
-    def should_enforce_policy(
-        self,
-        request: dict,
-        policy_result: PolicyResult,
-        client_ip: str,
-    ) -> EnforcementDecision:
-        """
-        Determines if a request should be blocked based on policy result.
-
-        This is the main entry point for enforcement decisions.
-
-        Args:
-            request: The request being evaluated (dict with method, path, headers, etc.)
-            policy_result: Result from policy evaluation (from Rust yori_core)
-            client_ip: Source IP address of the request
-
-        Returns:
-            EnforcementDecision with should_block=True if request should be blocked
-        """
-        timestamp = datetime.now()
-
-        # Safety check: If enforcement is not enabled, never block
-        if not self._is_enforcement_enabled():
-            return EnforcementDecision(
-                should_block=False,
-                policy_name=policy_result.policy_name,
-                reason=f"Enforcement disabled: {policy_result.reason}",
-                timestamp=timestamp,
-                allow_override=False,
-                action_taken="alert",  # Just log, don't block
-            )
-
-        # Check if this specific policy is configured to block
-        policy_action = self._get_policy_action(policy_result.policy_name)
-
-        # Determine what action to take
-        if policy_action == "allow":
-            # Policy is set to allow - never block
-            return EnforcementDecision(
-                should_block=False,
-                policy_name=policy_result.policy_name,
-                reason=f"Policy set to allow: {policy_result.reason}",
-                timestamp=timestamp,
-                allow_override=False,
-                action_taken="allow",
-            )
-        elif policy_action == "alert":
-            # Policy is set to alert only - log but don't block
-            return EnforcementDecision(
-                should_block=False,
-                policy_name=policy_result.policy_name,
-                reason=f"Policy set to alert only: {policy_result.reason}",
-                timestamp=timestamp,
-                allow_override=False,
-                action_taken="alert",
-            )
-        elif policy_action == "block":
-            # Policy is set to block - actually deny the request
-            logger.warning(
-                f"BLOCKING request from {client_ip}: {policy_result.policy_name} - {policy_result.reason}"
-            )
-            return EnforcementDecision(
-                should_block=True,
-                policy_name=policy_result.policy_name,
-                reason=policy_result.reason,
-                timestamp=timestamp,
-                allow_override=True,  # Future: check allowlist
-                action_taken="block",
-            )
-        else:
-            # Unknown action - fail safe (don't block)
-            logger.error(f"Unknown policy action: {policy_action} for {policy_result.policy_name}")
-            return EnforcementDecision(
-                should_block=False,
-                policy_name=policy_result.policy_name,
-                reason=f"Unknown action {policy_action}: {policy_result.reason}",
-                timestamp=timestamp,
-                allow_override=False,
-                action_taken="alert",
-            )
-
-    def _is_enforcement_enabled(self) -> bool:
-        """
-        Check if enforcement mode is enabled.
-
-        Enforcement requires:
-        1. mode = "enforce" in config
-        2. enforcement.enabled = true
-        3. enforcement.consent_accepted = true
-
-        Returns:
-            True if enforcement is fully enabled, False otherwise
-        """
-        # Check mode
-        if self.config.mode != "enforce":
-            return False
-
-        # Check enforcement configuration
-        if not self.config.enforcement.enabled:
-            return False
-
-        if not self.config.enforcement.consent_accepted:
-            logger.error(
-                "Enforcement enabled but consent not accepted! "
-                "This should not happen - enforcement will not activate."
-            )
-            return False
-
-        return True
-
-    def _get_policy_action(self, policy_name: str) -> str:
-        """
-        Get the configured action for a specific policy.
-
-        Args:
-            policy_name: Name of the policy file (e.g., "bedtime.rego")
-
-        Returns:
-            Action string: "allow", "alert", or "block"
-            Defaults to "alert" if not configured.
-        """
-        # Strip .rego extension if present
-        policy_key = policy_name.replace(".rego", "")
-
-        # Check if policy is configured
-        if policy_key in self.config.policies.files:
-            policy_config = self.config.policies.files[policy_key]
-            if not policy_config.enabled:
-                # Policy is disabled - treat as allow
-                return "allow"
-            return policy_config.action
-        else:
-            # Policy not configured - default to alert (safe default)
-            logger.debug(f"Policy {policy_name} not in config, defaulting to 'alert'")
-            return "alert"
 
 
 def should_enforce_policy(
     request: dict,
     policy_result: PolicyResult,
     client_ip: str,
-    config: Optional[YoriConfig] = None,
+    config: YoriConfig,
+    client_mac: Optional[str] = None,
 ) -> EnforcementDecision:
     """
-    Convenience function for enforcement decision.
+    Determine whether to enforce a policy result
 
-    This is the main entry point used by the proxy.
+    This is the main entry point for enforcement decisions. Checks (in order):
+    1. Emergency override - if active, bypass ALL enforcement
+    2. Allowlist - if device is allowlisted, bypass enforcement
+    3. Time exceptions - if active time exception exists, bypass enforcement
+    4. Otherwise, enforce the policy result
 
     Args:
-        request: Request being evaluated
+        request: The original request data
         policy_result: Result from policy evaluation
-        client_ip: Source IP
-        config: Configuration (if None, loads from default location)
+        client_ip: Client IP address
+        config: Full YORI configuration
+        client_mac: Client MAC address (optional)
 
     Returns:
-        EnforcementDecision
+        EnforcementDecision indicating whether to enforce and why
     """
-    if config is None:
-        config = YoriConfig.from_default_locations()
+    # If policy allows the request, no enforcement needed
+    if policy_result.allowed:
+        return EnforcementDecision(
+            enforce=False,
+            reason="Policy allows request",
+            bypass_type=None,
+            device_name=None
+        )
 
-    engine = EnforcementEngine(config)
-    return engine.should_enforce_policy(request, policy_result, client_ip)
+    # Check 1: Emergency override (highest priority)
+    if is_emergency_override_active(config):
+        logger.warning(f"Emergency override active - bypassing enforcement for {client_ip}")
+        return EnforcementDecision(
+            enforce=False,
+            reason="Emergency override is active - all enforcement disabled",
+            bypass_type="emergency_override",
+            device_name=None
+        )
+
+    # Check 2: Device allowlist
+    is_on_allowlist, device = is_allowlisted(client_ip, config, client_mac)
+    if is_on_allowlist and device:
+        logger.info(f"Allowlist bypass for device: {device.name} ({client_ip})")
+        return EnforcementDecision(
+            enforce=False,
+            reason=f"Device is on allowlist: {device.name}",
+            bypass_type="allowlist",
+            device_name=device.name
+        )
+
+    # Check 3: Time-based exceptions
+    exception_active, exception = check_any_exception_active(client_ip, config)
+    if exception_active and exception:
+        logger.info(f"Time exception '{exception.name}' active for {client_ip}")
+        return EnforcementDecision(
+            enforce=False,
+            reason=f"Time exception active: {exception.name}",
+            bypass_type="time_exception",
+            device_name=exception.name
+        )
+
+    # No bypasses apply - enforce the policy result
+    logger.info(f"Enforcing policy for {client_ip}: {policy_result.reason or 'Policy violation'}")
+    return EnforcementDecision(
+        enforce=True,
+        reason=policy_result.reason or f"Policy '{policy_result.policy_name}' blocks request",
+        bypass_type=None,
+        device_name=None
+    )
+
+
+def get_enforcement_summary(config: YoriConfig) -> dict:
+    """
+    Get a summary of current enforcement configuration
+
+    Args:
+        config: Full YORI configuration
+
+    Returns:
+        Dictionary with enforcement status summary
+    """
+    if not config.enforcement:
+        return {
+            "enforcement_enabled": False,
+            "allowlist_devices": 0,
+            "allowlist_groups": 0,
+            "time_exceptions": 0,
+            "emergency_override_active": False,
+        }
+
+    allowlist = config.enforcement.allowlist
+
+    return {
+        "enforcement_enabled": config.enforcement.enabled,
+        "consent_accepted": config.enforcement.consent_accepted,
+        "allowlist_devices": len(allowlist.devices),
+        "allowlist_devices_active": sum(
+            1 for d in allowlist.devices
+            if d.enabled and (not d.expires_at or d.expires_at > datetime.now())
+        ),
+        "allowlist_groups": len(allowlist.groups),
+        "time_exceptions": len(allowlist.time_exceptions),
+        "time_exceptions_active": sum(1 for e in allowlist.time_exceptions if e.enabled),
+        "emergency_override_active": config.enforcement.emergency_override.enabled,
+        "emergency_override_activated_by": config.enforcement.emergency_override.activated_by,
+    }
+
+
+# Import datetime for summary function
+from datetime import datetime
