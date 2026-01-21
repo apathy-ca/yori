@@ -1,0 +1,74 @@
+# YORI Configuration Example
+# Copy to /usr/local/etc/yori/yori.conf or /etc/yori/yori.conf
+
+# Operation mode: observe, advisory, or enforce
+# - observe: Log all requests, never block (safe default)
+# - advisory: Show alerts but don't block
+# - enforce: Actually block requests based on policies (requires enforcement.enabled=true)
+mode: observe
+
+# Listen address and port
+listen: "0.0.0.0:8443"
+
+# LLM endpoints to intercept
+endpoints:
+  - domain: api.openai.com
+    enabled: true
+  - domain: api.anthropic.com
+    enabled: true
+  - domain: gemini.google.com
+    enabled: true
+  - domain: api.mistral.ai
+    enabled: true
+
+# Audit logging
+audit:
+  database: /var/db/yori/audit.db
+  retention_days: 365
+
+# Policy engine
+policies:
+  directory: /usr/local/etc/yori/policies
+  default: home_default.rego
+
+  # Per-policy configuration
+  # Key is the policy filename without .rego extension
+  files:
+    bedtime:
+      enabled: true
+      action: alert  # allow | alert | block
+
+    privacy:
+      enabled: true
+      action: alert
+
+    content_filter:
+      enabled: true
+      action: alert
+
+    token_limit:
+      enabled: true
+      action: alert
+
+    model_restrictions:
+      enabled: false
+      action: allow
+
+# Enforcement mode (DANGEROUS - can break LLM functionality)
+# WARNING: Enabling enforcement mode will actually block requests.
+# This can break applications and services that rely on LLM APIs.
+# Only enable if you understand the risks and have reviewed your policies.
+enforcement:
+  # Must be explicitly enabled (requires consent_accepted=true)
+  enabled: false
+
+  # User must explicitly accept the risks of enforcement mode
+  # This prevents accidental enabling of blocking behavior
+  consent_accepted: false
+
+  # BEFORE ENABLING:
+  # 1. Test all policies in "observe" mode first
+  # 2. Review audit logs to understand what would be blocked
+  # 3. Configure per-policy actions (above) carefully
+  # 4. Set mode to "enforce" (above)
+  # 5. Set both enabled=true and consent_accepted=true (here)
