@@ -30,7 +30,8 @@ except ImportError:
 # Import Python components
 from yori.config import YoriConfig
 from yori.proxy import ProxyServer
-from yori.enforcement import EnforcementEngine, EnforcementDecision, PolicyResult
+from yori.models import EnforcementDecision, PolicyResult
+from yori.enforcement import should_enforce_policy
 from yori.consent import ConsentValidator, validate_enforcement_consent
 
 __all__ = [
@@ -38,9 +39,9 @@ __all__ = [
     "Cache",
     "YoriConfig",
     "ProxyServer",
-    "EnforcementEngine",
     "EnforcementDecision",
     "PolicyResult",
+    "should_enforce_policy",
     "ConsentValidator",
     "validate_enforcement_consent",
     "__version__",
