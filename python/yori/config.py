@@ -61,6 +61,26 @@ class PolicyConfig(BaseModel):
     )
 
 
+class EnforcementConfig(BaseModel):
+    """Enforcement and override configuration"""
+
+    override_enabled: bool = Field(
+        default=True, description="Enable password-based override for blocked requests"
+    )
+    override_password_hash: str = Field(
+        default="", description="SHA-256 hash of override password (format: sha256:hexdigest)"
+    )
+    override_rate_limit: int = Field(
+        default=3, description="Maximum override attempts per minute per IP"
+    )
+    admin_token_hash: str = Field(
+        default="", description="SHA-256 hash of emergency admin override token"
+    )
+    custom_messages: dict = Field(
+        default_factory=dict, description="Custom block messages per policy name"
+    )
+
+
 class YoriConfig(BaseModel):
     """Main YORI configuration"""
 

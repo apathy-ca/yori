@@ -42,6 +42,19 @@ class EnforcementDecision:
     timestamp: datetime  # When the decision was made
     allow_override: bool  # Whether user can override the block (future: allowlist)
     action_taken: str  # "allow", "alert", or "block" - what we actually did
+    request_id: Optional[str] = None  # Request ID for tracking
+
+    def to_dict(self) -> dict:
+        """Convert decision to dictionary for serialization"""
+        return {
+            "should_block": self.should_block,
+            "policy_name": self.policy_name,
+            "reason": self.reason,
+            "timestamp": self.timestamp.isoformat(),
+            "allow_override": self.allow_override,
+            "action_taken": self.action_taken,
+            "request_id": self.request_id,
+        }
 
 
 class EnforcementEngine:

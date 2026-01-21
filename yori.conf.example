@@ -72,3 +72,25 @@ enforcement:
   # 3. Configure per-policy actions (above) carefully
   # 4. Set mode to "enforce" (above)
   # 5. Set both enabled=true and consent_accepted=true (here)
+
+  # Enable password-based override for blocked requests
+  override_enabled: true
+
+  # SHA-256 hash of override password
+  # To generate: python3 -c "import hashlib; print('sha256:' + hashlib.sha256(b'your_password').hexdigest())"
+  # Example below is hash of 'test123' (DO NOT USE IN PRODUCTION)
+  override_password_hash: "sha256:ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae"
+
+  # Maximum override attempts per minute per IP
+  override_rate_limit: 3
+
+  # SHA-256 hash of emergency admin override token (for bypassing all policies)
+  # Leave empty to disable emergency override
+  admin_token_hash: ""
+
+  # Custom block messages per policy (optional)
+  custom_messages:
+    bedtime.rego: "LLM access is restricted after bedtime. Please try again tomorrow morning."
+    privacy.rego: "This request may contain sensitive information. Please review your prompt."
+    rate_limit.rego: "You've exceeded your request limit. Please wait before trying again."
+    content_filter.rego: "Your request was flagged by content filters. Please modify your prompt."
