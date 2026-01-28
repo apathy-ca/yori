@@ -74,6 +74,9 @@ class EnforcementConfig(BaseModel):
     emergency_override: EmergencyOverride = Field(
         default_factory=EmergencyOverride, description="Emergency override settings"
     )
+    override_enabled: bool = Field(True, description="Whether override mechanism is enabled")
+    override_password_hash: Optional[str] = Field(None, description="SHA-256 hash of override password")
+    admin_token_hash: Optional[str] = Field(None, description="SHA-256 hash of admin token for emergency override")
 
 
 class PolicyResult(BaseModel):

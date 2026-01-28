@@ -239,7 +239,7 @@ class ProxyServer:
                 )
 
                 # If should enforce (block), return block page
-                if enforcement_decision.enforce:
+                if enforcement_decision.should_block:
                     logger.warning(
                         f"BLOCKED request {request_id} from {client_ip} to {path}: "
                         f"{enforcement_decision.reason}"
@@ -270,8 +270,8 @@ class ProxyServer:
 
                 # Log allowed status
                 logger.info(
-                    f"Request {request_id} from {client_ip} to {path}: allowed "
-                    f"(bypass: {enforcement_decision.bypass_type or 'none'})"
+                    f"Request {request_id} from {client_ip} to {path}: {enforcement_decision.action_taken} "
+                    f"(reason: {enforcement_decision.reason})"
                 )
 
             # Forward request to upstream API

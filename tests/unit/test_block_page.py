@@ -4,7 +4,7 @@ Unit tests for block page rendering
 
 import pytest
 from datetime import datetime
-from yori.enforcement import EnforcementDecision
+from yori.models import BlockDecision
 from yori.block_page import (
     render_block_page,
     get_custom_message,
@@ -15,7 +15,7 @@ from yori.block_page import (
 
 def test_render_block_page_basic():
     """Test basic block page rendering"""
-    decision = EnforcementDecision(
+    decision = BlockDecision(
         should_block=True,
         policy_name="test.rego",
         reason="Test block reason",
@@ -36,7 +36,7 @@ def test_render_block_page_basic():
 
 def test_render_block_page_with_override():
     """Test block page rendering with override option"""
-    decision = EnforcementDecision(
+    decision = BlockDecision(
         should_block=True,
         policy_name="bedtime.rego",
         reason="LLM access not allowed after 21:00",
@@ -56,7 +56,7 @@ def test_render_block_page_with_override():
 
 def test_render_block_page_without_override():
     """Test block page rendering without override option"""
-    decision = EnforcementDecision(
+    decision = BlockDecision(
         should_block=True,
         policy_name="strict.rego",
         reason="Strict policy - no overrides",
@@ -73,7 +73,7 @@ def test_render_block_page_without_override():
 
 def test_render_block_page_custom_message():
     """Test block page with custom message"""
-    decision = EnforcementDecision(
+    decision = BlockDecision(
         should_block=True,
         policy_name="bedtime.rego",
         reason="LLM access not allowed after 21:00",
@@ -89,7 +89,7 @@ def test_render_block_page_custom_message():
 
 def test_render_block_page_invalid_decision():
     """Test that rendering fails for non-blocking decision"""
-    decision = EnforcementDecision(
+    decision = BlockDecision(
         should_block=False,
         policy_name="allow.rego",
         reason="Request allowed",
@@ -135,7 +135,7 @@ def test_remove_custom_message():
 
 def test_render_block_page_html_escaping():
     """Test that user input is properly escaped in HTML"""
-    decision = EnforcementDecision(
+    decision = BlockDecision(
         should_block=True,
         policy_name="<script>alert('xss')</script>",
         reason="<img src=x onerror=alert('xss')>",
