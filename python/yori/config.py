@@ -37,6 +37,19 @@ class PolicyConfig(BaseModel):
     default: str = Field(default="home_default.rego", description="Default policy file")
 
 
+class ProxyConfig(BaseModel):
+    """Proxy server configuration"""
+
+    tls_cert: Optional[Path] = Field(
+        default=Path("/usr/local/etc/yori/yori.crt"), description="Path to TLS certificate"
+    )
+    tls_key: Optional[Path] = Field(
+        default=Path("/usr/local/etc/yori/yori.key"), description="Path to TLS private key"
+    )
+    upstream_timeout: int = Field(default=30, description="Timeout for upstream requests in seconds")
+    max_request_size: int = Field(default=10485760, description="Maximum request size in bytes (10MB)")
+
+
 class YoriConfig(BaseModel):
     """Main YORI configuration"""
 
@@ -54,6 +67,7 @@ class YoriConfig(BaseModel):
         ]
     )
 
+    proxy: ProxyConfig = Field(default_factory=ProxyConfig)
     audit: AuditConfig = Field(default_factory=AuditConfig)
     policies: PolicyConfig = Field(default_factory=PolicyConfig)
     enforcement: Optional[EnforcementConfig] = Field(default_factory=EnforcementConfig)

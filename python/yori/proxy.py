@@ -270,48 +270,102 @@ class ProxyServer:
                     f"(bypass: {enforcement_decision.bypass_type or 'none'})"
                 )
 
-            # Log request event to audit database
-            if self.audit_logger:
-                try:
-                    self.audit_logger.log_request(
-                        client_ip=client_ip,
-                        request_path=path,
-                        request_method=request.method,
-                        upstream_host="placeholder",  # Will be real host when forwarding is implemented
-                        headers=dict(request.headers),
-                        request_id=request_id,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to log request event: {e}")
+            # Forward request to upstream API
+            try:
+                # Determine upstream URL
+                # For now, hardcode to OpenAI (will be configurable later)
+                upstream_base = "https://api.openai.com"
+                upstream_url = f"{upstream_base}/{path}"
 
-            # TODO Phase 1: Forward to real endpoint if not blocked
-            # For now, return a placeholder response
-            response = JSONResponse(
-                status_code=501,
-                content={
-                    "error": "Proxy forwarding not yet implemented (Phase 1)",
-                    "request_id": request_id,
-                    "mode": self.config.mode,
-                    "path": path,
-                },
-            )
+                # Add query parameters if present
+                if request.url.query:
+                    upstream_url = f"{upstream_url}?{request.url.query}"
 
-            # Log response event to audit database
-            if self.audit_logger:
-                try:
-                    duration_ms = (time.time() - start_time) * 1000
-                    self.audit_logger.log_response(
-                        client_ip=client_ip,
-                        status_code=response.status_code,
-                        duration_ms=duration_ms,
-                        upstream_host="placeholder",
-                        request_path=path,
-                        request_id=request_id,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to log response event: {e}")
+                # Log request event to audit database
+                if self.audit_logger:
+                    try:
+                        self.audit_logger.log_request(
+                            client_ip=client_ip,
+                            request_path=path,
+                            request_method=request.method,
+                            upstream_host=upstream_base,
+                            headers=dict(request.headers),
+                            request_id=request_id,
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to log request event: {e}")
 
-            return response
+                # Prepare headers (exclude hop-by-hop headers)
+                forward_headers = dict(request.headers)
+                # Remove headers that shouldn't be forwarded
+                for header in ["host", "connection", "keep-alive", "transfer-encoding"]:
+                    forward_headers.pop(header, None)
+
+                # Forward the request
+                logger.info(f"Forwarding request {request_id} to {upstream_url}")
+                upstream_response = await self._client.request(
+                    method=request.method,
+                    url=upstream_url,
+                    headers=forward_headers,
+                    content=body,
+                    timeout=30.0,
+                )
+
+                # Create response object
+                response = Response(
+                    content=upstream_response.content,
+                    status_code=upstream_response.status_code,
+                    headers=dict(upstream_response.headers),
+                )
+
+                # Log response event to audit database
+                if self.audit_logger:
+                    try:
+                        duration_ms = (time.time() - start_time) * 1000
+                        self.audit_logger.log_response(
+                            client_ip=client_ip,
+                            status_code=response.status_code,
+                            duration_ms=duration_ms,
+                            upstream_host=upstream_base,
+                            request_path=path,
+                            request_id=request_id,
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to log response event: {e}")
+
+                # Return upstream response to client
+                return response
+
+            except httpx.TimeoutException as e:
+                logger.error(f"Timeout forwarding request {request_id}: {e}")
+                return JSONResponse(
+                    status_code=504,
+                    content={
+                        "error": "Gateway Timeout",
+                        "message": "The upstream server did not respond in time",
+                        "request_id": request_id,
+                    },
+                )
+            except httpx.ConnectError as e:
+                logger.error(f"Connection error forwarding request {request_id}: {e}")
+                return JSONResponse(
+                    status_code=502,
+                    content={
+                        "error": "Bad Gateway",
+                        "message": "Could not connect to upstream server",
+                        "request_id": request_id,
+                    },
+                )
+            except Exception as e:
+                logger.error(f"Error forwarding request {request_id}: {e}")
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "error": "Internal Server Error",
+                        "message": "An unexpected error occurred while forwarding the request",
+                        "request_id": request_id,
+                    },
+                )
 
     def _validate_consent_on_startup(self):
         """Validate consent configuration on startup"""
