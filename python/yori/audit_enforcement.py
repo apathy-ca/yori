@@ -377,3 +377,131 @@ class EnforcementAuditLogger:
 
         logger.warning(f"Emergency override logged by {user}")
         return event_id
+
+    def log_request(
+        self,
+        client_ip: str,
+        request_path: str,
+        request_method: str,
+        upstream_host: str,
+        headers: Optional[Dict[str, str]] = None,
+        body_preview: Optional[str] = None,
+        request_id: Optional[str] = None,
+    ) -> Optional[int]:
+        """
+        Log a proxied request event.
+
+        Args:
+            client_ip: IP address of client
+            request_path: HTTP path being requested
+            request_method: HTTP method (GET, POST, etc.)
+            upstream_host: Upstream host being proxied to
+            headers: Request headers dictionary
+            body_preview: Preview of request body
+            request_id: Unique request ID
+
+        Returns:
+            ID of inserted record, or None if logging fails
+        """
+        try:
+            user_agent = headers.get("user-agent") if headers else None
+
+            return self.log_enforcement_event(
+                event_type="request_forwarded",
+                client_ip=client_ip,
+                endpoint=upstream_host,
+                http_method=request_method,
+                http_path=request_path,
+                enforcement_action="allow",
+                reason="Request forwarded to upstream",
+                request_id=request_id,
+                user_agent=user_agent,
+            )
+        except Exception as e:
+            logger.error(f"Failed to log request event: {e}")
+            return None
+
+    def log_response(
+        self,
+        client_ip: str,
+        status_code: int,
+        duration_ms: float,
+        upstream_host: str,
+        request_path: str = "/",
+        request_id: Optional[str] = None,
+    ) -> Optional[int]:
+        """
+        Log a response event after proxying to upstream.
+
+        Args:
+            client_ip: IP address of client
+            status_code: HTTP status code from upstream
+            duration_ms: Request duration in milliseconds
+            upstream_host: Upstream host that responded
+            request_path: HTTP path that was requested
+            request_id: Unique request ID
+
+        Returns:
+            ID of inserted record, or None if logging fails
+        """
+        try:
+            reason = f"Response received: {status_code} ({duration_ms:.2f}ms)"
+
+            return self.log_enforcement_event(
+                event_type="response_received",
+                client_ip=client_ip,
+                endpoint=upstream_host,
+                http_path=request_path,
+                enforcement_action="allow",
+                reason=reason,
+                request_id=request_id,
+            )
+        except Exception as e:
+            logger.error(f"Failed to log response event: {e}")
+            return None
+
+    def log_block(
+        self,
+        client_ip: str,
+        policy_name: str,
+        reason: str,
+        request_path: str,
+        request_method: str = "POST",
+        headers: Optional[Dict[str, str]] = None,
+        body_preview: Optional[str] = None,
+        request_id: Optional[str] = None,
+    ) -> Optional[int]:
+        """
+        Log a request block event.
+
+        Args:
+            client_ip: IP address of client
+            policy_name: Name of policy that blocked the request
+            reason: Reason for block
+            request_path: HTTP path that was blocked
+            request_method: HTTP method
+            headers: Request headers dictionary
+            body_preview: Preview of request body
+            request_id: Unique request ID
+
+        Returns:
+            ID of inserted record, or None if logging fails
+        """
+        try:
+            user_agent = headers.get("user-agent") if headers else None
+
+            return self.log_enforcement_event(
+                event_type="request_blocked",
+                policy_name=policy_name,
+                client_ip=client_ip,
+                endpoint="blocked",
+                http_method=request_method,
+                http_path=request_path,
+                enforcement_action="block",
+                reason=reason,
+                request_id=request_id,
+                user_agent=user_agent,
+            )
+        except Exception as e:
+            logger.error(f"Failed to log block event: {e}")
+            return None
