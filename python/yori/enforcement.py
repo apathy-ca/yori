@@ -14,6 +14,9 @@ from yori.allowlist import is_allowlisted
 from yori.time_exceptions import check_any_exception_active
 from yori.emergency import is_emergency_override_active
 
+# Alias for backwards compatibility with tests
+EnforcementEngineDecision = EnforcementDecision
+
 logger = logging.getLogger(__name__)
 
 

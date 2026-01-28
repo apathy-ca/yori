@@ -98,6 +98,16 @@ class EnforcementDecision(BaseModel):
     )
     device_name: Optional[str] = Field(None, description="Name of device that bypassed enforcement")
 
+    @property
+    def should_block(self) -> bool:
+        """Alias for enforce field"""
+        return self.enforce
+
+    @property
+    def action_taken(self) -> str:
+        """Human-readable action taken"""
+        return "block" if self.enforce else "allow"
+
 
 class RecentDevice(BaseModel):
     """A recently seen device for discovery"""
