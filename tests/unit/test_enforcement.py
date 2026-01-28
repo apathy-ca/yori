@@ -10,6 +10,7 @@ from datetime import datetime
 from yori.enforcement import (
     EnforcementEngine,
     EnforcementDecision,
+    EnforcementEngineDecision,
     PolicyResult,
     should_enforce_policy,
 )
@@ -315,9 +316,9 @@ class TestEnforcementDecisionDataclass:
     """Test EnforcementDecision dataclass"""
 
     def test_enforcement_decision_creation(self):
-        """Test creating an EnforcementDecision"""
+        """Test creating an EnforcementEngineDecision"""
         timestamp = datetime.now()
-        decision = EnforcementDecision(
+        decision = EnforcementEngineDecision(
             should_block=True,
             policy_name="test.rego",
             reason="Test reason",

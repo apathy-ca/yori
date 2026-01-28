@@ -35,7 +35,7 @@ class TestEnforcementBypass:
             request={}, policy_result=policy_result, client_ip="192.168.1.100", config=config
         )
 
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert "Policy allows" in decision.reason
         assert decision.bypass_type is None
 
@@ -57,7 +57,7 @@ class TestEnforcementBypass:
             request={}, policy_result=policy_result, client_ip="192.168.1.100", config=config
         )
 
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert "Emergency override" in decision.reason
         assert decision.bypass_type == "emergency_override"
 
@@ -87,7 +87,7 @@ class TestEnforcementBypass:
             request={}, policy_result=policy_result, client_ip="192.168.1.100", config=config
         )
 
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert "allowlist" in decision.reason.lower()
         assert decision.bypass_type == "allowlist"
         assert decision.device_name == "Dad's Laptop"
@@ -159,7 +159,7 @@ class TestEnforcementBypass:
             config=config,
         )
 
-        assert decision.enforce is True
+        assert decision.should_block is True
         assert decision.bypass_type is None
 
 
@@ -204,7 +204,7 @@ class TestBypassPriority:
         )
 
         # Should use emergency override, not allowlist or time exception
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert decision.bypass_type == "emergency_override"
 
     def test_allowlist_priority_over_time_exception(self):
@@ -244,7 +244,7 @@ class TestBypassPriority:
         )
 
         # Should use allowlist, not time exception
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert decision.bypass_type == "allowlist"
 
 
@@ -283,7 +283,7 @@ class TestMACAddressAllowlist:
             client_mac="aa:bb:cc:dd:ee:ff",
         )
 
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert decision.bypass_type == "allowlist"
         assert decision.device_name == "Test Device"
 
@@ -309,7 +309,7 @@ class TestPolicyViolations:
             config=config,
         )
 
-        assert decision.enforce is True
+        assert decision.should_block is True
         assert decision.reason  # Should have a reason
         assert decision.bypass_type is None
 
@@ -345,7 +345,7 @@ class TestPolicyViolations:
             config=config,
         )
 
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert decision.bypass_type == "allowlist"
 
 
@@ -393,7 +393,7 @@ class TestComplexScenarios:
         decision = should_enforce_policy(
             request={}, policy_result=policy_result, client_ip="192.168.1.100", config=config
         )
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert decision.bypass_type == "allowlist"
 
         # Kid's laptop should bypass during homework hours (tested via time_exceptions module)
@@ -427,5 +427,5 @@ class TestComplexScenarios:
         decision = should_enforce_policy(
             request={}, policy_result=policy_result, client_ip="192.168.1.200", config=config
         )
-        assert decision.enforce is False
+        assert decision.should_block is False
         assert decision.bypass_type == "allowlist"

@@ -218,28 +218,19 @@ class ProxyServer:
                 )
 
                 # If should enforce (block), return block page
-                if enforcement_decision.enforce:
+                if enforcement_decision.should_block:
                     logger.warning(
                         f"BLOCKED request {request_id} from {client_ip} to {path}: "
                         f"{enforcement_decision.reason}"
                     )
-                    # Create a compatible decision object for block page
-                    # The block_page module expects certain fields
-                    block_decision = type('obj', (object,), {
-                        'should_block': True,
-                        'policy_name': mock_policy_result.policy_name,
-                        'reason': enforcement_decision.reason,
-                        'timestamp': datetime.now(),
-                        'allow_override': True,
-                        'request_id': request_id,
-                    })()
-                    html = render_block_page(block_decision)
+                    # enforcement_decision is already an EnforcementEngineDecision with all needed fields
+                    html = render_block_page(enforcement_decision)
                     return HTMLResponse(content=html, status_code=403)
 
                 # Log allowed status
                 logger.info(
-                    f"Request {request_id} from {client_ip} to {path}: allowed "
-                    f"(bypass: {enforcement_decision.bypass_type or 'none'})"
+                    f"Request {request_id} from {client_ip} to {path}: {enforcement_decision.action_taken} "
+                    f"(reason: {enforcement_decision.reason})"
                 )
 
             # TODO Phase 1: Forward to real endpoint if not blocked

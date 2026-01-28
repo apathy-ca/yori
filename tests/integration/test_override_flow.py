@@ -16,7 +16,7 @@ from unittest.mock import patch, MagicMock
 
 from yori.config import YoriConfig, EnforcementConfig
 from yori.proxy import ProxyServer
-from yori.enforcement import EnforcementDecision
+from yori.enforcement import EnforcementEngineDecision
 from yori.override import hash_password, reset_override_rate_limit
 
 
@@ -70,8 +70,9 @@ class TestBlockPageFlow:
     def test_request_blocked_shows_block_page(self, mock_enforce, client):
         """Test that blocked request returns block page HTML"""
         # Mock enforcement decision to block
-        mock_enforce.return_value = EnforcementDecision(
+        mock_enforce.return_value = EnforcementEngineDecision(
             should_block=True,
+            action_taken="block",
             policy_name="bedtime.rego",
             reason="LLM access not allowed after 21:00",
             timestamp=datetime.now(),
@@ -95,8 +96,9 @@ class TestBlockPageFlow:
     def test_allowed_request_no_block_page(self, mock_enforce, client):
         """Test that allowed request does not show block page"""
         # Mock enforcement decision to allow
-        mock_enforce.return_value = EnforcementDecision(
+        mock_enforce.return_value = EnforcementEngineDecision(
             should_block=False,
+            action_taken="allow",
             policy_name="allow.rego",
             reason="Request allowed",
             timestamp=datetime.now(),
@@ -117,8 +119,9 @@ class TestBlockPageFlow:
     def test_block_page_without_override_option(self, mock_enforce, client):
         """Test block page when override is not allowed"""
         # Mock enforcement decision to block without override
-        mock_enforce.return_value = EnforcementDecision(
+        mock_enforce.return_value = EnforcementEngineDecision(
             should_block=True,
+            action_taken="block",
             policy_name="strict.rego",
             reason="Strict policy - no overrides allowed",
             timestamp=datetime.now(),
@@ -282,8 +285,9 @@ class TestOverrideHeader:
     def test_request_with_valid_override_header_allowed(self, mock_enforce, client):
         """Test that request with valid override header is allowed"""
         # Mock enforcement to block
-        mock_enforce.return_value = EnforcementDecision(
+        mock_enforce.return_value = EnforcementEngineDecision(
             should_block=True,
+            action_taken="block",
             policy_name="bedtime.rego",
             reason="Blocked",
             timestamp=datetime.now(),
@@ -305,8 +309,9 @@ class TestOverrideHeader:
     def test_request_with_invalid_override_header_blocked(self, mock_enforce, client):
         """Test that request with invalid override header is blocked"""
         # Mock enforcement to block
-        mock_enforce.return_value = EnforcementDecision(
+        mock_enforce.return_value = EnforcementEngineDecision(
             should_block=True,
+            action_taken="block",
             policy_name="bedtime.rego",
             reason="Blocked",
             timestamp=datetime.now(),
@@ -331,8 +336,9 @@ class TestCustomMessages:
     @patch('yori.proxy.should_enforce_policy')
     def test_custom_message_displayed(self, mock_enforce, client):
         """Test that custom message for policy is displayed"""
-        mock_enforce.return_value = EnforcementDecision(
+        mock_enforce.return_value = EnforcementEngineDecision(
             should_block=True,
+            action_taken="block",
             policy_name="bedtime.rego",
             reason="LLM access not allowed after 21:00",
             timestamp=datetime.now(),
