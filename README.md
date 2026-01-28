@@ -56,6 +56,87 @@ That's it! YORI is now logging all LLM traffic.
 
 ---
 
+## Running the Proxy Server
+
+YORI includes an HTTP/HTTPS reverse proxy for intercepting LLM API traffic.
+
+### Basic Usage
+
+```bash
+# Run with default configuration (observe mode)
+python -m yori
+
+# Run with custom configuration file
+python -m yori --config /etc/yori/yori.yaml
+
+# Run with custom TLS certificates
+python -m yori --cert /path/to/cert.pem --key /path/to/key.pem
+
+# Run on custom host and port
+python -m yori --host 127.0.0.1 --port 9443
+
+# Run in HTTP-only mode (for testing, not recommended for production)
+python -m yori --no-tls
+
+# Enable verbose logging
+python -m yori --verbose
+```
+
+### Configuration
+
+The proxy server uses YAML configuration files. See `config.example.yaml` for all available options.
+
+Key configuration sections:
+- **mode**: `observe`, `advisory`, or `enforce` (requires consent)
+- **enforcement**: Policy enforcement settings, allowlist, overrides
+- **endpoints**: LLM API endpoints to intercept
+- **audit**: Audit log configuration
+
+### TLS Certificate Setup
+
+For HTTPS interception, you'll need TLS certificates:
+
+```bash
+# Generate self-signed certificate for testing
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout /tmp/yori.key \
+  -out /tmp/yori.crt \
+  -days 365 \
+  -subj "/CN=localhost"
+
+# Run proxy with certificates
+python -m yori --cert /tmp/yori.crt --key /tmp/yori.key
+```
+
+**Production:** Use certificates from your OPNsense CA or Let's Encrypt.
+
+### Testing
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run integration tests
+pytest tests/integration/test_proxy.py -v
+
+# Run with coverage
+pytest tests/ -v --cov=yori
+```
+
+### Health Check
+
+Once running, verify the proxy is healthy:
+
+```bash
+# Check health endpoint
+curl -k https://localhost:8443/health
+
+# Expected response:
+# {"status":"healthy","mode":"observe","endpoints":4,"enforcement_enabled":false}
+```
+
+---
+
 ## Features
 
 ### Phase 1: Observe Mode (v0.1.0)
