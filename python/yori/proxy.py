@@ -9,14 +9,18 @@ from fastapi.responses import JSONResponse, HTMLResponse
 import httpx
 import logging
 import uuid
+import time
 from typing import Optional
 from datetime import datetime
+from pathlib import Path
 
 from yori.config import YoriConfig
 from yori.models import PolicyResult, EnforcementDecision
 from yori.enforcement import should_enforce_policy
 from yori.consent import validate_enforcement_consent
 from yori.block_page import render_block_page
+from yori.audit_enforcement import EnforcementAuditLogger
+from yori.proxy_handlers import create_block_response, get_body_preview
 from yori.override import (
     validate_override_password,
     validate_emergency_override,
@@ -41,6 +45,16 @@ class ProxyServer:
         )
         self._setup_routes()
         self._client: Optional[httpx.AsyncClient] = None
+
+        # Initialize audit logger with error handling
+        self.audit_logger: Optional[EnforcementAuditLogger] = None
+        try:
+            audit_db_path = self.config.audit.database
+            self.audit_logger = EnforcementAuditLogger(audit_db_path)
+            logger.info(f"Audit logger initialized: {audit_db_path}")
+        except Exception as e:
+            logger.error(f"Failed to initialize audit logger: {e}")
+            logger.warning("Proxy will continue without audit logging")
 
         # Validate consent on startup
         self._validate_consent_on_startup()
@@ -167,6 +181,9 @@ class ProxyServer:
         @self.app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
         async def proxy_request(request: Request, path: str):
             """Proxy all requests to real LLM endpoints"""
+            # Start timing for audit logging
+            start_time = time.time()
+
             # Generate unique request ID
             request_id = str(uuid.uuid4())
             client_ip = request.client.host if request.client else "unknown"
@@ -223,18 +240,29 @@ class ProxyServer:
                         f"BLOCKED request {request_id} from {client_ip} to {path}: "
                         f"{enforcement_decision.reason}"
                     )
-                    # Create a compatible decision object for block page
-                    # The block_page module expects certain fields
-                    block_decision = type('obj', (object,), {
-                        'should_block': True,
-                        'policy_name': mock_policy_result.policy_name,
-                        'reason': enforcement_decision.reason,
-                        'timestamp': datetime.now(),
-                        'allow_override': True,
-                        'request_id': request_id,
-                    })()
-                    html = render_block_page(block_decision)
-                    return HTMLResponse(content=html, status_code=403)
+
+                    # Log block event to audit database
+                    if self.audit_logger:
+                        try:
+                            self.audit_logger.log_block(
+                                client_ip=client_ip,
+                                policy_name=mock_policy_result.policy_name,
+                                reason=enforcement_decision.reason,
+                                request_path=path,
+                                request_method=request.method,
+                                headers=dict(request.headers),
+                                request_id=request_id,
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to log block event: {e}")
+
+                    # Return HTML block page
+                    return await create_block_response(
+                        request=request,
+                        decision=enforcement_decision,
+                        policy_name=mock_policy_result.policy_name,
+                        request_id=request_id,
+                    )
 
                 # Log allowed status
                 logger.info(
@@ -242,9 +270,23 @@ class ProxyServer:
                     f"(bypass: {enforcement_decision.bypass_type or 'none'})"
                 )
 
+            # Log request event to audit database
+            if self.audit_logger:
+                try:
+                    self.audit_logger.log_request(
+                        client_ip=client_ip,
+                        request_path=path,
+                        request_method=request.method,
+                        upstream_host="placeholder",  # Will be real host when forwarding is implemented
+                        headers=dict(request.headers),
+                        request_id=request_id,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to log request event: {e}")
+
             # TODO Phase 1: Forward to real endpoint if not blocked
             # For now, return a placeholder response
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=501,
                 content={
                     "error": "Proxy forwarding not yet implemented (Phase 1)",
@@ -253,6 +295,23 @@ class ProxyServer:
                     "path": path,
                 },
             )
+
+            # Log response event to audit database
+            if self.audit_logger:
+                try:
+                    duration_ms = (time.time() - start_time) * 1000
+                    self.audit_logger.log_response(
+                        client_ip=client_ip,
+                        status_code=response.status_code,
+                        duration_ms=duration_ms,
+                        upstream_host="placeholder",
+                        request_path=path,
+                        request_id=request_id,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to log response event: {e}")
+
+            return response
 
     def _validate_consent_on_startup(self):
         """Validate consent configuration on startup"""

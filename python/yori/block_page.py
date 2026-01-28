@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from yori.enforcement import EnforcementDecision
+from yori.models import BlockDecision
 
 
 # Template directory
@@ -33,14 +33,14 @@ CUSTOM_MESSAGES = {
 
 
 def render_block_page(
-    decision: EnforcementDecision,
+    decision: BlockDecision,
     custom_message: Optional[str] = None
 ) -> str:
     """
-    Render a block page HTML from an enforcement decision.
+    Render a block page HTML from a block decision.
 
     Args:
-        decision: The enforcement decision containing block details
+        decision: The block decision containing block details
         custom_message: Optional custom message to display (overrides default)
 
     Returns:

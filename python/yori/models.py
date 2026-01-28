@@ -105,3 +105,16 @@ class RecentDevice(BaseModel):
     last_seen: datetime = Field(default_factory=datetime.now, description="When device was last seen")
     request_count: int = Field(0, description="Number of requests from this device")
     on_allowlist: bool = Field(False, description="Whether device is already allowlisted")
+
+
+class BlockDecision(BaseModel):
+    """Decision to block a request with details for rendering block page"""
+
+    should_block: bool = Field(True, description="Whether the request should be blocked")
+    policy_name: str = Field(..., description="Name of the policy that blocked the request")
+    reason: str = Field(..., description="Human-readable reason for the block")
+    timestamp: datetime = Field(default_factory=datetime.now, description="When the block decision was made")
+    request_id: str = Field(..., description="Unique request identifier")
+    allow_override: bool = Field(True, description="Whether override password is allowed")
+    client_ip: Optional[str] = Field(None, description="Client IP address")
+    request_path: Optional[str] = Field(None, description="Request path that was blocked")
