@@ -46,3 +46,5 @@ ENV/
 # Build artifacts
 *.txz
 *.pkg
+.czarina-context.md
+CZAR_MESSAGE.md
