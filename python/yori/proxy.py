@@ -396,8 +396,15 @@ class ProxyServer:
 
     async def startup(self):
         """Initialize proxy server resources"""
-        self._client = httpx.AsyncClient(timeout=30.0)
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(30.0),
+            limits=httpx.Limits(
+                max_connections=100,           # Total concurrent connections
+                max_keepalive_connections=20,  # Persistent connection pool
+            ),
+        )
         logger.info(f"YORI proxy server starting (mode: {self.config.mode})")
+        logger.info("Connection pooling enabled: max_connections=100, keepalive=20")
 
     async def shutdown(self):
         """Clean up proxy server resources"""
