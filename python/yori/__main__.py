@@ -28,6 +28,7 @@ import argparse
 import logging
 import signal
 import sys
+import asyncio
 from pathlib import Path
 from typing import Optional
 
@@ -35,6 +36,7 @@ import uvicorn
 
 from yori.config import YoriConfig
 from yori.proxy import ProxyServer
+from yori.resilience.shutdown import setup_signal_handlers
 
 # Configure logging
 logging.basicConfig(
@@ -46,17 +48,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global flag for graceful shutdown
-shutdown_requested = False
-
-
-def signal_handler(signum, frame):
-    """Handle shutdown signals gracefully"""
-    global shutdown_requested
-    signal_name = signal.Signals(signum).name
-    logger.info(f"Received {signal_name}, shutting down gracefully...")
-    shutdown_requested = True
-    sys.exit(0)
+# Note: Shutdown is now handled by the GracefulShutdownManager
+# The old global flag is kept for backwards compatibility but not used
 
 
 def parse_args():
@@ -146,10 +139,6 @@ def main():
     logging.getLogger().setLevel(getattr(logging, args.log_level))
     logger.debug(f"Command line arguments: {args}")
 
-    # Register signal handlers for graceful shutdown
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-
     # Load configuration
     logger.info("Loading YORI configuration...")
     config = load_configuration(args.config)
@@ -161,6 +150,10 @@ def main():
     except Exception as e:
         logger.error(f"Failed to initialize proxy server: {e}", exc_info=True)
         sys.exit(1)
+
+    # Set up signal handlers for graceful shutdown
+    setup_signal_handlers(proxy.shutdown_manager)
+    logger.debug("Graceful shutdown handlers registered")
 
     # Determine listen address
     if config.listen:

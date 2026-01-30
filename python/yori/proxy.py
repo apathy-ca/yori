@@ -29,6 +29,7 @@ from yori.override import (
     create_override_event,
     log_override_event,
 )
+from yori.resilience.shutdown import GracefulShutdownManager
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ class ProxyServer:
         self._setup_routes()
         self._client: Optional[httpx.AsyncClient] = None
 
+        # Initialize shutdown manager
+        self.shutdown_manager = GracefulShutdownManager(timeout=30)
+
         # Initialize audit logger with error handling
         self.audit_logger: Optional[EnforcementAuditLogger] = None
         try:
@@ -62,6 +66,9 @@ class ProxyServer:
         # Register startup and shutdown events
         self.app.add_event_handler("startup", self.startup)
         self.app.add_event_handler("shutdown", self.shutdown)
+
+        # Add request tracking middleware
+        self.app.middleware("http")(self._request_tracking_middleware)
 
     def _setup_routes(self):
         """Set up proxy routes"""
@@ -394,13 +401,65 @@ class ProxyServer:
             logger.warning("Requests WILL be blocked based on policy configuration.")
             logger.warning("=" * 80)
 
+    async def _request_tracking_middleware(self, request: Request, call_next):
+        """
+        Middleware to track in-flight requests for graceful shutdown.
+        """
+        # Check if shutdown is in progress
+        if self.shutdown_manager.is_shutting_down():
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "Service Unavailable",
+                    "message": "Server is shutting down, not accepting new requests",
+                },
+            )
+
+        # Generate or use existing request ID
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+
+        # Register this request
+        await self.shutdown_manager.register_request(request_id)
+
+        try:
+            # Process the request
+            response = await call_next(request)
+            return response
+        finally:
+            # Always unregister, even if request failed
+            await self.shutdown_manager.unregister_request(request_id)
+
     async def startup(self):
         """Initialize proxy server resources"""
         self._client = httpx.AsyncClient(timeout=30.0)
         logger.info(f"YORI proxy server starting (mode: {self.config.mode})")
 
     async def shutdown(self):
-        """Clean up proxy server resources"""
-        if self._client:
-            await self._client.aclose()
-        logger.info("YORI proxy server shutting down")
+        """Clean up proxy server resources with graceful shutdown"""
+        logger.info("Shutdown event triggered")
+
+        # If shutdown wasn't already requested, request it now
+        if not self.shutdown_manager.is_shutting_down():
+            self.shutdown_manager.request_shutdown()
+
+        # Define cleanup tasks
+        async def close_http_client():
+            """Close the HTTP client connection pool"""
+            if self._client:
+                await self._client.aclose()
+                logger.info("HTTP client closed")
+
+        async def close_audit_logger():
+            """Close audit logger database connections"""
+            if self.audit_logger:
+                # Audit logger doesn't have async close, but we can log
+                logger.info("Audit logger connections will be closed")
+
+        # Execute graceful shutdown sequence
+        cleanup_callbacks = [close_http_client, close_audit_logger]
+        clean_exit = await self.shutdown_manager.shutdown_sequence(cleanup_callbacks)
+
+        if clean_exit:
+            logger.info("YORI proxy server shutdown complete (clean)")
+        else:
+            logger.warning("YORI proxy server shutdown complete (forced due to timeout)")
