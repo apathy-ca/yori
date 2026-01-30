@@ -34,7 +34,8 @@ CUSTOM_MESSAGES = {
 
 def render_block_page(
     decision: BlockDecision,
-    custom_message: Optional[str] = None
+    custom_message: Optional[str] = None,
+    csrf_token: Optional[str] = None
 ) -> str:
     """
     Render a block page HTML from a block decision.
@@ -42,6 +43,7 @@ def render_block_page(
     Args:
         decision: The block decision containing block details
         custom_message: Optional custom message to display (overrides default)
+        csrf_token: Optional CSRF token for form protection
 
     Returns:
         HTML string for the block page
@@ -68,6 +70,7 @@ def render_block_page(
         request_id=decision.request_id,
         allow_override=decision.allow_override,
         custom_message=custom_message,
+        csrf_token=csrf_token,
     )
 
     return html

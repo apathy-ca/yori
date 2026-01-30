@@ -21,6 +21,7 @@ if __name__ == "__main__":
 import uvicorn
 from yori.config import YoriConfig
 from yori.proxy import ProxyServer
+from yori.tls_config import validate_certificate, TLSProfile, RECOMMENDED_TLS_CONFIG
 
 # Configure logging
 logging.basicConfig(
@@ -169,9 +170,17 @@ def main():
     logger.info(f"Listen address: {host}:{port}")
 
     if ssl_certfile and ssl_keyfile:
+        # Validate certificate and key
+        if not validate_certificate(ssl_certfile, ssl_keyfile):
+            logger.error("Certificate validation failed! Server may not start properly.")
+            logger.error("Please check your certificate and key files.")
+
         logger.info(f"TLS: ENABLED (HTTPS)")
         logger.info(f"  Certificate: {ssl_certfile}")
         logger.info(f"  Private key: {ssl_keyfile}")
+        logger.info(f"  Recommended profile: {RECOMMENDED_TLS_CONFIG['profile'].value.upper()}")
+        logger.info(f"  Recommended min TLS: {RECOMMENDED_TLS_CONFIG['min_version']}")
+        logger.info("  Note: Using Python's default SSL context via Uvicorn")
         protocol = "https"
     else:
         logger.warning(f"TLS: DISABLED (HTTP only)")

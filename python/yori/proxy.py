@@ -22,6 +22,10 @@ from yori.block_page import render_block_page
 from yori.audit_enforcement import EnforcementAuditLogger
 from yori.proxy_handlers import create_block_response, get_body_preview
 from yori.cache import InMemoryCache, generate_policy_cache_key
+from yori.csrf import CSRFMiddleware
+from yori.rate_limit import RateLimitMiddleware
+from yori.security_headers import SecurityHeadersMiddleware
+from yori.input_validation import RequestSizeLimitMiddleware
 from yori.override import (
     validate_override_password,
     validate_emergency_override,
@@ -56,7 +60,33 @@ class ProxyServer:
             version="0.2.0",
         )
 
-        # Add metrics middleware
+        # Add middlewares (order matters - outermost first)
+        # Security headers (should be applied last, so added first)
+        self.app.add_middleware(
+            SecurityHeadersMiddleware,
+            hsts_max_age=31536000,  # 1 year
+            hsts_include_subdomains=True,
+            hsts_preload=True,
+        )
+
+        # Request size limits (prevent resource exhaustion)
+        self.app.add_middleware(
+            RequestSizeLimitMiddleware,
+            max_request_size=10 * 1024 * 1024,  # 10 MB
+        )
+
+        # Rate limiting to prevent abuse
+        self.app.add_middleware(
+            RateLimitMiddleware,
+            requests_per_minute=60,  # TODO: Make configurable
+            requests_per_hour=1000,
+        )
+
+        # CSRF protection for state-changing operations
+        # TODO: Use a persistent secret key from config in production
+        self.app.add_middleware(CSRFMiddleware)
+
+        # Metrics middleware for observability
         self.app.add_middleware(MetricsMiddleware)
 
         self._setup_routes()
