@@ -1,0 +1,602 @@
+{
+  "dashboard": {
+    "title": "YORI LLM Gateway",
+    "tags": ["yori", "llm", "proxy", "monitoring"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "title": "Overview",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+        "id": 1
+      },
+      {
+        "title": "Request Rate (req/s)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 1},
+        "id": 2,
+        "targets": [
+          {
+            "expr": "rate(yori_requests_total[5m])",
+            "legendFormat": "{{method}} {{path}} - {{status_code}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "legend": {
+          "show": true,
+          "alignAsTable": true,
+          "avg": true,
+          "current": true,
+          "max": true,
+          "values": true
+        }
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 1},
+        "id": 3,
+        "targets": [
+          {
+            "expr": "sum by (status_code) (rate(yori_requests_total{status_code=~\"4..|5..\"}[5m]))",
+            "legendFormat": "{{status_code}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Errors/sec"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "legend": {
+          "show": true,
+          "alignAsTable": true,
+          "avg": true,
+          "current": true,
+          "max": true,
+          "values": true
+        }
+      },
+      {
+        "title": "Active Requests",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 9},
+        "id": 4,
+        "targets": [
+          {
+            "expr": "yori_active_requests",
+            "legendFormat": "Active Requests",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Count"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Memory Usage",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 9},
+        "id": 5,
+        "targets": [
+          {
+            "expr": "yori_process_memory_bytes",
+            "legendFormat": "Memory (RSS)",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "bytes",
+            "label": "Memory"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Active Connections",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 9},
+        "id": 6,
+        "targets": [
+          {
+            "expr": "yori_active_connections",
+            "legendFormat": "Connections",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Count"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Latency",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 15},
+        "id": 7
+      },
+      {
+        "title": "Request Latency Percentiles",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "id": 8,
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(yori_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(yori_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(yori_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Duration"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "legend": {
+          "show": true,
+          "alignAsTable": true,
+          "avg": true,
+          "current": true,
+          "max": true,
+          "values": true
+        }
+      },
+      {
+        "title": "Upstream API Latency",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "id": 9,
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(yori_upstream_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50 - {{host}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(yori_upstream_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 - {{host}}",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(yori_upstream_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99 - {{host}}",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Duration"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "legend": {
+          "show": true,
+          "alignAsTable": true,
+          "avg": true,
+          "current": true,
+          "max": true,
+          "values": true
+        }
+      },
+      {
+        "title": "Enforcement",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 24},
+        "id": 10
+      },
+      {
+        "title": "Enforcement Activity",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 25},
+        "id": 11,
+        "targets": [
+          {
+            "expr": "rate(yori_enforcement_blocks_total[5m])",
+            "legendFormat": "Blocks - {{policy_name}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(yori_enforcement_allows_total[5m])",
+            "legendFormat": "Allows - {{action}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Rate"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "legend": {
+          "show": true,
+          "alignAsTable": true,
+          "avg": true,
+          "current": true,
+          "max": true,
+          "values": true
+        }
+      },
+      {
+        "title": "Block Rate (%)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 25},
+        "id": 12,
+        "targets": [
+          {
+            "expr": "rate(yori_enforcement_blocks_total[5m]) / rate(yori_requests_total[5m]) * 100",
+            "legendFormat": "Block Rate",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Block Rate %"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [10],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High Block Rate",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "title": "Override Attempts",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 33},
+        "id": 13,
+        "targets": [
+          {
+            "expr": "rate(yori_override_attempts_total{success=\"true\"}[5m])",
+            "legendFormat": "Successful - emergency={{emergency}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(yori_override_attempts_total{success=\"false\"}[5m])",
+            "legendFormat": "Failed - emergency={{emergency}}",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(yori_override_rate_limits_total[5m])",
+            "legendFormat": "Rate Limited",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Rate"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Total Blocks by Policy",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 33},
+        "id": 14,
+        "targets": [
+          {
+            "expr": "sum by (policy_name, reason) (yori_enforcement_blocks_total)",
+            "legendFormat": "{{policy_name}} - {{reason}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Count"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Upstream",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 39},
+        "id": 15
+      },
+      {
+        "title": "Upstream Request Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40},
+        "id": 16,
+        "targets": [
+          {
+            "expr": "sum by (host, method) (rate(yori_upstream_requests_total[5m]))",
+            "legendFormat": "{{host}} - {{method}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Upstream Errors",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40},
+        "id": 17,
+        "targets": [
+          {
+            "expr": "rate(yori_upstream_errors_total[5m])",
+            "legendFormat": "{{host}} - {{error_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Errors/sec"
+          },
+          {
+            "format": "short"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0.05],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High Upstream Error Rate",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "title": "Health",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 48},
+        "id": 18
+      },
+      {
+        "title": "Component Health Status",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 49},
+        "id": 19,
+        "targets": [
+          {
+            "expr": "yori_health_status",
+            "legendFormat": "{{component}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "none",
+          "colorMode": "background",
+          "orientation": "auto",
+          "textMode": "value_and_name",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "Unhealthy",
+                    "color": "red"
+                  },
+                  "0.5": {
+                    "text": "Degraded",
+                    "color": "yellow"
+                  },
+                  "1": {
+                    "text": "Healthy",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 0.5,
+                  "color": "yellow"
+                },
+                {
+                  "value": 1,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Health Check Duration",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 49},
+        "id": 20,
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(yori_health_check_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 - {{component}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Duration"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Audit Database",
+        "type": "row",
+        "gridPos": {"h": 1, "w": 24, "x": 0, "y": 55},
+        "id": 21
+      },
+      {
+        "title": "Audit Log Writes",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 56},
+        "id": 22,
+        "targets": [
+          {
+            "expr": "rate(yori_audit_log_writes_total{success=\"true\"}[5m])",
+            "legendFormat": "Success - {{event_type}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(yori_audit_log_writes_total{success=\"false\"}[5m])",
+            "legendFormat": "Failed - {{event_type}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "wps",
+            "label": "Writes/sec"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Audit Database Size",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 56},
+        "id": 23,
+        "targets": [
+          {
+            "expr": "yori_audit_db_size_bytes",
+            "legendFormat": "Database Size",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "bytes",
+            "label": "Size"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}

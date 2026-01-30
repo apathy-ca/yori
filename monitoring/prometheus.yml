@@ -1,0 +1,63 @@
+# Prometheus configuration for YORI monitoring
+#
+# Usage:
+#   docker run -d \
+#     --name prometheus \
+#     -p 9090:9090 \
+#     -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml \
+#     prom/prometheus
+
+global:
+  # How frequently to scrape targets
+  scrape_interval: 15s
+
+  # How frequently to evaluate alerting rules
+  evaluation_interval: 15s
+
+  # External labels to attach to any time series or alerts
+  external_labels:
+    monitor: 'yori-proxy'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - 'localhost:9093'
+
+# Load rules once and periodically evaluate them
+# rule_files:
+#   - "alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # YORI Proxy Server
+  - job_name: 'yori'
+    # Override global scrape_interval for this job
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+    # Metrics path (default is /metrics)
+    metrics_path: '/metrics'
+
+    # Static target configuration
+    static_configs:
+      - targets:
+          # YORI proxy server endpoint
+          # Update this to match your YORI server address
+          - 'localhost:8080'
+        labels:
+          instance: 'yori-proxy'
+          environment: 'production'
+
+    # Optional: Relabeling rules
+    # relabel_configs:
+    #   - source_labels: [__address__]
+    #     target_label: instance
+    #     regex: '([^:]+):.*'
+    #     replacement: '$1'
+
+  # Optional: Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
