@@ -1,0 +1,58 @@
+
+================================================================================
+YORI PROXY PERFORMANCE ANALYSIS
+================================================================================
+
+Found 3 potential bottlenecks:
+  🔴 Critical: 2
+  🟡 Major: 1
+  🔵 Minor: 0
+
+================================================================================
+🔴 CRITICAL ISSUES
+================================================================================
+
+1. [Connection Pooling] ProxyServer.startup
+   Line: 399
+   Issue: httpx.AsyncClient created without connection limits
+   Fix: Add limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
+
+2. [Connection Pooling] ProxyServer
+   Issue: No connection pooling configuration found
+   Fix: Configure httpx.AsyncClient with Limits for connection reuse
+
+================================================================================
+🟡 MAJOR ISSUES
+================================================================================
+
+1. [Caching] ProxyServer
+   Issue: No caching implementation found
+   Fix: Implement in-memory cache for policy decisions and repeated requests
+
+================================================================================
+RECOMMENDED ACTIONS
+================================================================================
+
+1. Implement Connection Pooling (CRITICAL)
+   - Configure httpx.AsyncClient with connection limits
+   - Reuse client instance across requests
+   - Target: Reduce connection overhead by 80%
+
+2. Add Request/Response Caching (MAJOR)
+   - Implement in-memory cache with TTL
+   - Cache policy evaluation results
+   - Cache repeated upstream requests
+   - Target: 30%+ cache hit rate
+
+3. Optimize Memory Usage (MINOR)
+   - Profile memory usage under load
+   - Consider streaming for large payloads
+   - Target: <100MB under load
+
+4. Improve Async Patterns (if applicable)
+   - Remove any blocking I/O operations
+   - Use asyncio.gather for concurrent operations
+   - Target: Maximum concurrent throughput
+    
+================================================================================
+
