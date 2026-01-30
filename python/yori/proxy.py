@@ -24,6 +24,7 @@ from yori.proxy_handlers import create_block_response, get_body_preview
 from yori.csrf import CSRFMiddleware
 from yori.rate_limit import RateLimitMiddleware
 from yori.security_headers import SecurityHeadersMiddleware
+from yori.input_validation import RequestSizeLimitMiddleware
 from yori.override import (
     validate_override_password,
     validate_emergency_override,
@@ -54,6 +55,12 @@ class ProxyServer:
             hsts_max_age=31536000,  # 1 year
             hsts_include_subdomains=True,
             hsts_preload=True,
+        )
+
+        # Request size limits (prevent resource exhaustion)
+        self.app.add_middleware(
+            RequestSizeLimitMiddleware,
+            max_request_size=10 * 1024 * 1024,  # 10 MB
         )
 
         # Rate limiting to prevent abuse
