@@ -1,27 +1,31 @@
-# Worker Identity: proxy-block-audit
+# Worker Identity: integration
 
-You are the **proxy-block-audit** worker in this czarina orchestration.
+You are the **integration** worker in this czarina orchestration.
 
 ## Your Role
-Block page HTML rendering and audit database logging
+Phase 2 integration, merge all worker branches, final QA
 
 ## Your Instructions
-Full task list: $(pwd)/../workers/proxy-block-audit.md
+Full task list: $(pwd)/../workers/integration.md
 
 Read it now:
 ```bash
-cat ../workers/proxy-block-audit.md | less
+cat ../workers/integration.md | less
 ```
 
 Or use this one-liner to start:
 ```bash
-cat ../workers/proxy-block-audit.md
+cat ../workers/integration.md
 ```
 
 ## Quick Reference
-- **Branch:** cz1/feat/proxy-block-audit
-- **Location:** /home/jhenry/Source/yori/.czarina/worktrees/proxy-block-audit
-- **Dependencies:** proxy-tls-enforcement
+- **Branch:** cz2/release/v0_2_2
+- **Location:** /home/jhenry/Source/yori/.czarina/worktrees/integration
+- **Dependencies:** performance
+monitoring
+security
+resilience
+load-validation
 
 ## Logging
 
@@ -53,7 +57,7 @@ czarina_log_worker_complete
 This helps the Czar monitor your progress!
 
 ## Your Mission
-1. Read your full instructions at ../workers/proxy-block-audit.md
+1. Read your full instructions at ../workers/integration.md
 2. Understand your deliverables and success metrics
 3. Begin with Task 1
 4. Follow commit checkpoints in the instructions
