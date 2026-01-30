@@ -223,6 +223,9 @@
                        autocomplete="off">
                 <input type="hidden" name="request_id" value="{{ request_id }}">
                 <input type="hidden" name="policy_name" value="{{ policy_name }}">
+                {% if csrf_token %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                {% endif %}
                 <button type="submit">Override</button>
             </form>
             <p class="override-hint">

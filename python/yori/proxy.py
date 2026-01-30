@@ -21,6 +21,7 @@ from yori.consent import validate_enforcement_consent
 from yori.block_page import render_block_page
 from yori.audit_enforcement import EnforcementAuditLogger
 from yori.proxy_handlers import create_block_response, get_body_preview
+from yori.csrf import CSRFMiddleware
 from yori.override import (
     validate_override_password,
     validate_emergency_override,
@@ -43,6 +44,11 @@ class ProxyServer:
             description="Zero-trust LLM governance for home networks",
             version="0.2.0",
         )
+
+        # Add CSRF protection middleware
+        # TODO: Use a persistent secret key from config in production
+        self.app.add_middleware(CSRFMiddleware)
+
         self._setup_routes()
         self._client: Optional[httpx.AsyncClient] = None
 

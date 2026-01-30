@@ -11,6 +11,7 @@ import logging
 
 from yori.models import EnforcementDecision, BlockDecision
 from yori.block_page import render_block_page
+from yori.csrf import get_csrf_token
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +46,12 @@ async def create_block_response(
         request_path=str(request.url.path),
     )
 
+    # Get CSRF token from request for form protection
+    csrf_token = get_csrf_token(request)
+
     # Render HTML block page
     try:
-        html_content = render_block_page(block_decision)
+        html_content = render_block_page(block_decision, csrf_token=csrf_token)
     except Exception as e:
         logger.error(f"Failed to render block page: {e}")
         # Fallback to simple HTML if template rendering fails
