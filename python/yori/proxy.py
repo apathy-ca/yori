@@ -21,6 +21,7 @@ from yori.consent import validate_enforcement_consent
 from yori.block_page import render_block_page
 from yori.audit_enforcement import EnforcementAuditLogger
 from yori.proxy_handlers import create_block_response, get_body_preview
+from yori.cache import InMemoryCache, generate_policy_cache_key
 from yori.override import (
     validate_override_password,
     validate_emergency_override,
@@ -56,6 +57,12 @@ class ProxyServer:
             logger.error(f"Failed to initialize audit logger: {e}")
             logger.warning("Proxy will continue without audit logging")
 
+        # Initialize policy evaluation cache
+        # TTL = 60s for policy decisions (balance freshness vs. performance)
+        # Max size = 1000 entries (sufficient for home network)
+        self.policy_cache = InMemoryCache(default_ttl=60, max_size=1000)
+        logger.info("Policy cache initialized: ttl=60s, max_size=1000")
+
         # Validate consent on startup
         self._validate_consent_on_startup()
 
@@ -74,6 +81,7 @@ class ProxyServer:
                 "mode": self.config.mode,
                 "endpoints": len(self.config.endpoints),
                 "enforcement_enabled": self.config.enforcement.enabled if self.config.enforcement else False,
+                "cache": self.policy_cache.metrics(),
             }
 
         @self.app.post("/yori/override")
@@ -226,17 +234,35 @@ class ProxyServer:
 
             # Check enforcement decision (skip if override is valid)
             if not has_override:
-                enforcement_decision = should_enforce_policy(
-                    request={
-                        "method": request.method,
-                        "path": path,
-                        "headers": dict(request.headers),
-                        "body": request_data,
-                    },
-                    policy_result=mock_policy_result,
+                # Generate cache key for policy decision
+                cache_key = generate_policy_cache_key(
                     client_ip=client_ip,
-                    config=self.config,
+                    request_path=path,
+                    request_method=request.method,
                 )
+
+                # Check cache first
+                cached_decision = self.policy_cache.get(cache_key)
+                if cached_decision is not None:
+                    enforcement_decision = cached_decision
+                    logger.debug(f"Cache HIT for policy decision: {cache_key[:16]}...")
+                else:
+                    # Cache miss - evaluate policy
+                    enforcement_decision = should_enforce_policy(
+                        request={
+                            "method": request.method,
+                            "path": path,
+                            "headers": dict(request.headers),
+                            "body": request_data,
+                        },
+                        policy_result=mock_policy_result,
+                        client_ip=client_ip,
+                        config=self.config,
+                    )
+
+                    # Cache the decision for future requests
+                    self.policy_cache.set(cache_key, enforcement_decision)
+                    logger.debug(f"Cache MISS - stored policy decision: {cache_key[:16]}...")
 
                 # If should enforce (block), return block page
                 if enforcement_decision.should_block:
@@ -396,8 +422,15 @@ class ProxyServer:
 
     async def startup(self):
         """Initialize proxy server resources"""
-        self._client = httpx.AsyncClient(timeout=30.0)
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(30.0),
+            limits=httpx.Limits(
+                max_connections=100,           # Total concurrent connections
+                max_keepalive_connections=20,  # Persistent connection pool
+            ),
+        )
         logger.info(f"YORI proxy server starting (mode: {self.config.mode})")
+        logger.info("Connection pooling enabled: max_connections=100, keepalive=20")
 
     async def shutdown(self):
         """Clean up proxy server resources"""
