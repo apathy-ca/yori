@@ -30,6 +30,17 @@ from yori.override import (
     create_override_event,
     log_override_event,
 )
+from yori import metrics
+from yori.metrics_middleware import (
+    MetricsMiddleware,
+    record_upstream_request,
+    record_upstream_error,
+    record_enforcement_block,
+    record_enforcement_allow,
+    record_override_attempt,
+    record_override_rate_limit,
+    record_audit_log_write,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +55,10 @@ class ProxyServer:
             description="Zero-trust LLM governance for home networks",
             version="0.2.0",
         )
+
+        # Add metrics middleware
+        self.app.add_middleware(MetricsMiddleware)
+
         self._setup_routes()
         self._client: Optional[httpx.AsyncClient] = None
 
@@ -75,14 +90,130 @@ class ProxyServer:
 
         @self.app.get("/health")
         async def health_check():
-            """Health check endpoint"""
-            return {
+            """Health check endpoint with component validation"""
+            import time
+            start_time = time.time()
+
+            # Overall health status
+            overall_healthy = True
+            components = {}
+
+            # Check proxy service
+            components["proxy"] = {
                 "status": "healthy",
+                "message": "Proxy service is running",
+            }
+            metrics.health_status.labels(component="proxy").set(1)
+
+            # Check upstream API connectivity
+            upstream_healthy = False
+            upstream_start = time.time()
+            try:
+                # Try to connect to upstream API
+                if self._client:
+                    # Simple HEAD request to check connectivity
+                    upstream_response = await self._client.head(
+                        "https://api.openai.com/",
+                        timeout=5.0,
+                    )
+                    upstream_healthy = True
+                    components["upstream_api"] = {
+                        "status": "healthy",
+                        "message": "Upstream API is reachable",
+                        "host": "api.openai.com",
+                    }
+                    metrics.health_status.labels(component="upstream_api").set(1)
+                else:
+                    components["upstream_api"] = {
+                        "status": "unhealthy",
+                        "message": "HTTP client not initialized",
+                    }
+                    metrics.health_status.labels(component="upstream_api").set(0)
+                    overall_healthy = False
+            except httpx.TimeoutException:
+                components["upstream_api"] = {
+                    "status": "degraded",
+                    "message": "Upstream API is slow to respond",
+                    "host": "api.openai.com",
+                }
+                metrics.health_status.labels(component="upstream_api").set(0.5)
+            except Exception as e:
+                components["upstream_api"] = {
+                    "status": "unhealthy",
+                    "message": f"Cannot reach upstream API: {str(e)}",
+                    "host": "api.openai.com",
+                }
+                metrics.health_status.labels(component="upstream_api").set(0)
+                overall_healthy = False
+
+            upstream_duration = time.time() - upstream_start
+            metrics.health_check_duration_seconds.labels(component="upstream_api").observe(upstream_duration)
+
+            # Check audit database
+            audit_db_start = time.time()
+            if self.audit_logger:
+                try:
+                    # Simple connectivity check (database exists)
+                    db_path = self.config.audit.database
+                    if db_path.exists():
+                        components["audit_db"] = {
+                            "status": "healthy",
+                            "message": "Audit database is accessible",
+                            "path": str(db_path),
+                        }
+                        metrics.health_status.labels(component="audit_db").set(1)
+
+                        # Update audit DB size metric
+                        try:
+                            from yori.metrics_middleware import update_audit_db_size
+                            db_size = db_path.stat().st_size
+                            update_audit_db_size(db_size)
+                        except Exception:
+                            pass
+                    else:
+                        components["audit_db"] = {
+                            "status": "unhealthy",
+                            "message": "Audit database file not found",
+                            "path": str(db_path),
+                        }
+                        metrics.health_status.labels(component="audit_db").set(0)
+                        # Don't mark overall as unhealthy for missing audit DB
+                except Exception as e:
+                    components["audit_db"] = {
+                        "status": "unhealthy",
+                        "message": f"Audit database error: {str(e)}",
+                    }
+                    metrics.health_status.labels(component="audit_db").set(0)
+            else:
+                components["audit_db"] = {
+                    "status": "disabled",
+                    "message": "Audit logging is not configured",
+                }
+                # Don't set metric for disabled component
+
+            audit_db_duration = time.time() - audit_db_start
+            metrics.health_check_duration_seconds.labels(component="audit_db").observe(audit_db_duration)
+
+            # Calculate total health check duration
+            total_duration = time.time() - start_time
+
+            return {
+                "status": "healthy" if overall_healthy else "unhealthy",
                 "mode": self.config.mode,
                 "endpoints": len(self.config.endpoints),
                 "enforcement_enabled": self.config.enforcement.enabled if self.config.enforcement else False,
                 "cache": self.policy_cache.metrics(),
+                "components": components,
+                "check_duration_ms": round(total_duration * 1000, 2),
             }
+
+        @self.app.get("/metrics")
+        async def metrics_endpoint():
+            """Prometheus metrics endpoint"""
+            return Response(
+                content=metrics.generate_metrics(),
+                media_type=metrics.get_content_type(),
+            )
 
         @self.app.post("/yori/override")
         async def handle_override(request: Request):
@@ -91,6 +222,7 @@ class ProxyServer:
 
             # Check rate limiting
             if not check_override_rate_limit(client_ip):
+                record_override_rate_limit()
                 return JSONResponse(
                     status_code=429,
                     content={
@@ -142,6 +274,9 @@ class ProxyServer:
                     log_override_event(event)
                     reset_override_rate_limit(client_ip)
 
+                    # Record metric
+                    record_override_attempt(success=True, emergency=True)
+
                     return JSONResponse(
                         content={
                             "success": True,
@@ -164,6 +299,9 @@ class ProxyServer:
                 log_override_event(event)
                 reset_override_rate_limit(client_ip)
 
+                # Record metric
+                record_override_attempt(success=True, emergency=False)
+
                 return JSONResponse(
                     content={
                         "success": True,
@@ -181,6 +319,9 @@ class ProxyServer:
                 emergency=emergency,
             )
             log_override_event(event)
+
+            # Record metric
+            record_override_attempt(success=False, emergency=emergency)
 
             return JSONResponse(
                 status_code=401,
@@ -271,6 +412,12 @@ class ProxyServer:
                         f"{enforcement_decision.reason}"
                     )
 
+                    # Record enforcement block metric
+                    record_enforcement_block(
+                        policy_name=mock_policy_result.policy_name,
+                        reason=enforcement_decision.reason,
+                    )
+
                     # Log block event to audit database
                     if self.audit_logger:
                         try:
@@ -283,8 +430,10 @@ class ProxyServer:
                                 headers=dict(request.headers),
                                 request_id=request_id,
                             )
+                            record_audit_log_write("block", True)
                         except Exception as e:
                             logger.error(f"Failed to log block event: {e}")
+                            record_audit_log_write("block", False)
 
                     # Return HTML block page
                     return await create_block_response(
@@ -300,11 +449,15 @@ class ProxyServer:
                     f"(reason: {enforcement_decision.reason})"
                 )
 
+                # Record enforcement allow metric
+                record_enforcement_allow(action=enforcement_decision.action_taken)
+
             # Forward request to upstream API
             try:
                 # Determine upstream URL
                 # For now, hardcode to OpenAI (will be configurable later)
                 upstream_base = "https://api.openai.com"
+                upstream_host = "api.openai.com"
                 upstream_url = f"{upstream_base}/{path}"
 
                 # Add query parameters if present
@@ -322,8 +475,10 @@ class ProxyServer:
                             headers=dict(request.headers),
                             request_id=request_id,
                         )
+                        record_audit_log_write("request", True)
                     except Exception as e:
                         logger.error(f"Failed to log request event: {e}")
+                        record_audit_log_write("request", False)
 
                 # Prepare headers (exclude hop-by-hop headers)
                 forward_headers = dict(request.headers)
@@ -333,12 +488,22 @@ class ProxyServer:
 
                 # Forward the request
                 logger.info(f"Forwarding request {request_id} to {upstream_url}")
+                upstream_start_time = time.time()
                 upstream_response = await self._client.request(
                     method=request.method,
                     url=upstream_url,
                     headers=forward_headers,
                     content=body,
                     timeout=30.0,
+                )
+                upstream_duration = time.time() - upstream_start_time
+
+                # Record upstream metrics
+                record_upstream_request(
+                    host=upstream_host,
+                    method=request.method,
+                    status_code=upstream_response.status_code,
+                    duration=upstream_duration,
                 )
 
                 # Create response object
@@ -360,14 +525,17 @@ class ProxyServer:
                             request_path=path,
                             request_id=request_id,
                         )
+                        record_audit_log_write("response", True)
                     except Exception as e:
                         logger.error(f"Failed to log response event: {e}")
+                        record_audit_log_write("response", False)
 
                 # Return upstream response to client
                 return response
 
             except httpx.TimeoutException as e:
                 logger.error(f"Timeout forwarding request {request_id}: {e}")
+                record_upstream_error(upstream_host, "timeout")
                 return JSONResponse(
                     status_code=504,
                     content={
@@ -378,6 +546,7 @@ class ProxyServer:
                 )
             except httpx.ConnectError as e:
                 logger.error(f"Connection error forwarding request {request_id}: {e}")
+                record_upstream_error(upstream_host, "connection_error")
                 return JSONResponse(
                     status_code=502,
                     content={
@@ -388,6 +557,7 @@ class ProxyServer:
                 )
             except Exception as e:
                 logger.error(f"Error forwarding request {request_id}: {e}")
+                record_upstream_error(upstream_host, "unknown_error")
                 return JSONResponse(
                     status_code=500,
                     content={
@@ -431,6 +601,9 @@ class ProxyServer:
         )
         logger.info(f"YORI proxy server starting (mode: {self.config.mode})")
         logger.info("Connection pooling enabled: max_connections=100, keepalive=20")
+
+        # Initialize metrics
+        metrics.initialize_info_metrics(version="0.2.0", mode=self.config.mode)
 
     async def shutdown(self):
         """Clean up proxy server resources"""
