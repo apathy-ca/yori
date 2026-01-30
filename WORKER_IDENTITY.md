@@ -1,27 +1,27 @@
-# Worker Identity: proxy-block-audit
+# Worker Identity: security
 
-You are the **proxy-block-audit** worker in this czarina orchestration.
+You are the **security** worker in this czarina orchestration.
 
 ## Your Role
-Block page HTML rendering and audit database logging
+Security hardening and vulnerability scanning
 
 ## Your Instructions
-Full task list: $(pwd)/../workers/proxy-block-audit.md
+Full task list: $(pwd)/../workers/security.md
 
 Read it now:
 ```bash
-cat ../workers/proxy-block-audit.md | less
+cat ../workers/security.md | less
 ```
 
 Or use this one-liner to start:
 ```bash
-cat ../workers/proxy-block-audit.md
+cat ../workers/security.md
 ```
 
 ## Quick Reference
-- **Branch:** cz1/feat/proxy-block-audit
-- **Location:** /home/jhenry/Source/yori/.czarina/worktrees/proxy-block-audit
-- **Dependencies:** proxy-tls-enforcement
+- **Branch:** cz2/feat/security
+- **Location:** /home/jhenry/Source/yori/.czarina/worktrees/security
+- **Dependencies:** None
 
 ## Logging
 
@@ -53,7 +53,7 @@ czarina_log_worker_complete
 This helps the Czar monitor your progress!
 
 ## Your Mission
-1. Read your full instructions at ../workers/proxy-block-audit.md
+1. Read your full instructions at ../workers/security.md
 2. Understand your deliverables and success metrics
 3. Begin with Task 1
 4. Follow commit checkpoints in the instructions
