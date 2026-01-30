@@ -1,27 +1,29 @@
-# Worker Identity: proxy-block-audit
+# Worker Identity: load-validation
 
-You are the **proxy-block-audit** worker in this czarina orchestration.
+You are the **load-validation** worker in this czarina orchestration.
 
 ## Your Role
-Block page HTML rendering and audit database logging
+Load testing, soak testing, and chaos engineering
 
 ## Your Instructions
-Full task list: $(pwd)/../workers/proxy-block-audit.md
+Full task list: $(pwd)/../workers/load-validation.md
 
 Read it now:
 ```bash
-cat ../workers/proxy-block-audit.md | less
+cat ../workers/load-validation.md | less
 ```
 
 Or use this one-liner to start:
 ```bash
-cat ../workers/proxy-block-audit.md
+cat ../workers/load-validation.md
 ```
 
 ## Quick Reference
-- **Branch:** cz1/feat/proxy-block-audit
-- **Location:** /home/jhenry/Source/yori/.czarina/worktrees/proxy-block-audit
-- **Dependencies:** proxy-tls-enforcement
+- **Branch:** cz2/test/load-validation
+- **Location:** /home/jhenry/Source/yori/.czarina/worktrees/load-validation
+- **Dependencies:** performance
+monitoring
+resilience
 
 ## Logging
 
@@ -53,7 +55,7 @@ czarina_log_worker_complete
 This helps the Czar monitor your progress!
 
 ## Your Mission
-1. Read your full instructions at ../workers/proxy-block-audit.md
+1. Read your full instructions at ../workers/load-validation.md
 2. Understand your deliverables and success metrics
 3. Begin with Task 1
 4. Follow commit checkpoints in the instructions
