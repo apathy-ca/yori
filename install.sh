@@ -48,6 +48,9 @@ fi
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR"
 
+WHEEL_URL="https://github.com/${YORI_REPO}/releases/download/v${YORI_VERSION}/yori-${YORI_VERSION}-cp39-abi3-freebsd_13_x86_64.whl"
+SOURCE_URL="https://github.com/${YORI_REPO}/archive/refs/tags/v${YORI_VERSION}.tar.gz"
+
 if [ -n "$YORI_WHEEL" ]; then
     echo "[2/8] Using local wheel: $YORI_WHEEL"
     if [ ! -f "$YORI_WHEEL" ]; then
@@ -55,37 +58,37 @@ if [ -n "$YORI_WHEEL" ]; then
         exit 1
     fi
     cp "$YORI_WHEEL" .
-elif fetch "https://github.com/${YORI_REPO}/releases/download/v${YORI_VERSION}/yori-${YORI_VERSION}-cp39-abi3-freebsd_13_x86_64.whl" 2>/dev/null; then
-    echo "[2/8] Downloaded pre-built wheel"
+elif fetch "$WHEEL_URL" 2>/dev/null; then
+    echo "[2/8] Downloaded pre-built wheel from GitHub release"
 else
-    echo "[2/8] Downloading YORI package..."
-    echo "Pre-built wheel not available, building from source..."
-    echo "This will take 5-10 minutes..."
-
-    # Install build dependencies
-    pkg install -y rust
-
-    # Download source
-    SOURCE_URL="https://github.com/${YORI_REPO}/archive/refs/tags/v${YORI_VERSION}.tar.gz"
-    fetch "$SOURCE_URL" -o yori-source.tar.gz || {
-        echo "Error: Failed to download YORI source"
-        echo "URL: $SOURCE_URL"
-        exit 1
-    }
-
-    tar xzf yori-source.tar.gz
-    cd "yori-${YORI_VERSION}"
-
-    # Bootstrap pip and install maturin
-    python3.11 -m ensurepip
-    python3.11 -m pip install --upgrade pip maturin
-
-    # Build wheel
-    maturin build --release
-
-    # Copy wheel to temp dir
-    cp target/wheels/yori-*.whl "$TEMP_DIR/"
-    cd "$TEMP_DIR"
+    echo "[2/8] Checking for YORI package..."
+    echo ""
+    echo "ERROR: No pre-built wheel found for YORI v${YORI_VERSION}"
+    echo ""
+    echo "OPNsense is a firewall appliance and does not include development"
+    echo "tools like the Rust compiler. You must build the wheel on a"
+    echo "development system and copy it here."
+    echo ""
+    echo "BUILD OPTIONS:"
+    echo ""
+    echo "  Option A: Wait for GitHub release (easiest)"
+    echo "    Check: https://github.com/${YORI_REPO}/releases"
+    echo ""
+    echo "  Option B: Build on FreeBSD VM (recommended)"
+    echo "    1. Create FreeBSD 13+ VM"
+    echo "    2. pkg install rust python311 py311-sqlite3"
+    echo "    3. python3.11 -m ensurepip && python3.11 -m pip install maturin"
+    echo "    4. git clone https://github.com/${YORI_REPO}"
+    echo "    5. cd yori && maturin build --release"
+    echo "    6. Copy target/wheels/yori-*.whl to OPNsense"
+    echo ""
+    echo "  Option C: Request pre-built wheel"
+    echo "    Open issue at: https://github.com/${YORI_REPO}/issues"
+    echo ""
+    echo "Then install on OPNsense:"
+    echo "  YORI_WHEEL=/tmp/yori-*.whl sh install.sh"
+    echo ""
+    exit 1
 fi
 
 echo "[3/8] Creating virtual environment..."
