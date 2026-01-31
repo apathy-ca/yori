@@ -106,18 +106,16 @@ def main():
 
     # Check if proxy dependencies are available
     if not HAVE_PROXY:
-        logger.error("Proxy server dependencies not available")
-        logger.error(f"Missing dependency: {PROXY_ERROR}")
-        logger.error("")
-        logger.error("The YORI proxy server requires fastapi and uvicorn,")
-        logger.error("which need Rust to compile on FreeBSD.")
-        logger.error("")
-        logger.error("YORI can still function for policy evaluation and auditing,")
-        logger.error("but the HTTP proxy server is not available in minimal mode.")
-        logger.error("")
-        logger.error("To enable the proxy, install on a system with Rust available:")
-        logger.error("  pip install fastapi uvicorn")
-        sys.exit(1)
+        logger.warning("Proxy server dependencies not available")
+        logger.warning(f"Missing dependency: {PROXY_ERROR}")
+        logger.warning("")
+        logger.warning("FastAPI/uvicorn not available, falling back to minimal server")
+        logger.warning("")
+
+        # Import and run minimal server instead
+        from yori.minimal_server import main as minimal_main
+        minimal_main()
+        return
 
     args = parse_args()
 
