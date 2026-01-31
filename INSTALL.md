@@ -31,7 +31,9 @@ cd yori-0.2.0-freebsd-amd64
 sh install.sh
 ```
 
-That's it! No Rust compiler, no pip packages to download, completely self-contained.
+That's it! No Rust compiler, no pip packages to download, no pkg operations, completely self-contained.
+
+**Note:** Python 3.11 must already be installed on OPNsense (it comes pre-installed on standard OPNsense). Everything else is bundled.
 
 ## What Gets Installed
 
@@ -109,21 +111,24 @@ service configd restart
 
 ## Troubleshooting
 
-### FreeBSD Repository Enabled (Segmentation Faults)
+### Broken pkg/Segmentation Faults from Previous Attempts
 
-If you see segmentation faults during installation or pkg complaining about FreeBSD repository:
+If your system has mixed FreeBSD/OPNsense packages from previous installation attempts:
 
 ```bash
-# Disable FreeBSD repositories (use OPNsense only)
-cat > /usr/local/etc/pkg/repos/FreeBSD.conf << 'EOF'
-FreeBSD: { enabled: no }
-FreeBSD-kmods: { enabled: no }
-EOF
+# The new installer avoids pkg entirely, but if pkg itself is broken:
 
-# Update package database
-pkg update
+# Option 1: Reinstall OPNsense (cleanest)
+# Backup your config first, then reinstall from ISO
 
-# Try installation again
+# Option 2: Fix pkg database (risky)
+# Only if you know what you're doing:
+pkg update -f
+pkg upgrade -f
+
+# Option 3: Just proceed anyway
+# The new installer doesn't use pkg, so if Python 3.11 works, you're fine:
+python3.11 --version  # Should show 3.11.x
 cd /tmp/yori-0.2.0-freebsd-amd64
 sh install.sh
 ```

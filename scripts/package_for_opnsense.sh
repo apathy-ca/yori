@@ -107,30 +107,18 @@ set -e
 PREFIX="${PREFIX:-/usr/local}"
 YORI_VENV="$PREFIX/yori-venv"
 
-# Clean up any leftover repo configs and disable FreeBSD repos
-echo "Cleaning up and ensuring OPNsense-only repositories..."
-rm -f /usr/local/etc/pkg/repos/FreeBSD-temp.conf 2>/dev/null || true
-rm -f /usr/local/etc/pkg/repos/FreeBSD.conf 2>/dev/null || true
-
-# Explicitly disable FreeBSD repositories
-cat > /usr/local/etc/pkg/repos/FreeBSD.conf << 'REPOEOF'
-FreeBSD: { enabled: no }
-FreeBSD-kmods: { enabled: no }
-REPOEOF
-
-echo "Installing YORI dependencies from OPNsense repository only..."
-pkg update
-
 # Check if Python is already installed (it should be on OPNsense)
+echo "Checking for Python 3.11..."
 if ! python3.11 --version >/dev/null 2>&1; then
-    echo "Error: Python 3.11 not found. OPNsense should have it pre-installed."
+    echo "Error: Python 3.11 not found."
+    echo "OPNsense should have Python pre-installed."
+    echo "Please install manually: pkg install python311"
     exit 1
 fi
 
-# Only install the SQLite extension if not present
-pkg install -y py311-sqlite3 || {
-    echo "Warning: Could not install py311-sqlite3, will try without it"
-}
+echo "Python 3.11 found: $(python3.11 --version)"
+echo "Note: Skipping pkg operations to avoid system conflicts."
+echo "All dependencies are bundled in this package."
 
 echo "Creating virtual environment..."
 python3.11 -m ensurepip || true
@@ -217,9 +205,6 @@ sysrc yori_enable="YES"
 # Clear OPNsense cache
 rm -rf "$PREFIX/opnsense/mvc/app/cache/"*
 service configd restart 2>/dev/null || true
-
-# Clean up - remove the FreeBSD repo disabling file
-rm -f /usr/local/etc/pkg/repos/FreeBSD.conf 2>/dev/null || true
 
 echo ""
 echo "=== Installation Complete! ==="
