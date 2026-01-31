@@ -11,7 +11,8 @@ COMMENT=	Zero-trust LLM governance for home networks
 LICENSE=	MIT
 
 BUILD_DEPENDS=	${PYTHON_PKGNAMEPREFIX}maturin>=1.0:devel/py-maturin@${PY_FLAVOR}
-RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}fastapi>=0.109.0:www/py-fastapi@${PY_FLAVOR} \
+RUN_DEPENDS=	${PYTHON_PKGNAMEPREFIX}sqlite3>0:databases/py-sqlite3@${PY_FLAVOR} \
+		${PYTHON_PKGNAMEPREFIX}fastapi>=0.109.0:www/py-fastapi@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}uvicorn>=0.27.0:www/py-uvicorn@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}httpx>=0.26.0:www/py-httpx@${PY_FLAVOR} \
 		${PYTHON_PKGNAMEPREFIX}pydantic>=2.5.0:devel/py-pydantic@${PY_FLAVOR} \

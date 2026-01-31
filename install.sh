@@ -31,7 +31,14 @@ if [ ! -f /usr/local/opnsense/version/core ]; then
 fi
 
 echo "[1/8] Installing dependencies..."
-pkg install -y python311 py311-pip py311-sqlite3
+pkg install -y python311 py311-sqlite3
+
+# Bootstrap pip if not present
+if ! python3.11 -m pip --version >/dev/null 2>&1; then
+    echo "Bootstrapping pip..."
+    python3.11 -m ensurepip
+    python3.11 -m pip install --upgrade pip
+fi
 
 echo "[2/8] Downloading YORI package..."
 WHEEL_URL="https://github.com/${YORI_REPO}/releases/download/v${YORI_VERSION}/yori-${YORI_VERSION}-cp39-abi3-freebsd_13_x86_64.whl"
@@ -44,8 +51,12 @@ fetch "$WHEEL_URL" || {
     exit 1
 }
 
-echo "[3/8] Installing YORI Python package..."
-pip install yori-*.whl
+echo "[3/8] Creating virtual environment..."
+python3.11 -m venv /usr/local/yori-venv
+
+echo "[3.5/8] Installing YORI Python package in venv..."
+/usr/local/yori-venv/bin/pip install --upgrade pip
+/usr/local/yori-venv/bin/pip install yori-*.whl
 
 echo "[4/8] Creating directories..."
 mkdir -p "$CONFIG_DIR/policies"
@@ -88,7 +99,7 @@ load_rc_config $name
 : ${yori_pidfile:="/var/run/yori.pid"}
 : ${yori_log:="/var/log/yori/yori.log"}
 
-command="/usr/local/bin/python3.11"
+command="/usr/local/yori-venv/bin/python3.11"
 command_args="-m yori.proxy_server --config ${yori_config}"
 pidfile="${yori_pidfile}"
 

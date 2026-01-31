@@ -239,18 +239,21 @@ ls -lh /tmp/yori.conf
 ```bash
 ssh root@10.0.0.1
 
-# Install Python (if not present)
-pkg install python311 py311-pip py311-sqlite3
+# Install Python and dependencies
+pkg install python311 py311-sqlite3
+
+# Bootstrap pip if needed
+python3.11 -m ensurepip
 
 # Create virtual environment
 python3.11 -m venv /usr/local/yori-venv
 
-# Activate and install
-source /usr/local/yori-venv/bin/activate
-pip install /tmp/yori-*.whl
+# Install YORI in venv (do NOT activate - use venv python directly)
+/usr/local/yori-venv/bin/pip install --upgrade pip
+/usr/local/yori-venv/bin/pip install /tmp/yori-*.whl
 
 # Verify installation
-python -c "import yori; print('YORI installed:', yori.__version__)"
+/usr/local/yori-venv/bin/python -c "import yori; print('YORI installed:', yori.__version__)"
 ```
 
 **✅ Verification:**

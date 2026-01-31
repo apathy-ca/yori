@@ -13,11 +13,18 @@ echo "=== YORI FreeBSD Build Script ==="
 
 # Install dependencies
 echo "[1/5] Installing build dependencies..."
-pkg install -y rust python311 py311-pip py311-sqlite3
+pkg install -y rust python311 py311-sqlite3
+
+# Bootstrap pip if not present
+if ! python3.11 -m pip --version >/dev/null 2>&1; then
+    echo "Bootstrapping pip..."
+    python3.11 -m ensurepip
+    python3.11 -m pip install --upgrade pip
+fi
 
 # Install maturin
 echo "[2/5] Installing maturin..."
-pip install --upgrade maturin
+python3.11 -m pip install --upgrade maturin
 
 # Build the wheel
 echo "[3/5] Building YORI wheel..."
