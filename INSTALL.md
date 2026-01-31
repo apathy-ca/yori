@@ -109,6 +109,25 @@ service configd restart
 
 ## Troubleshooting
 
+### FreeBSD Repository Enabled (Segmentation Faults)
+
+If you see segmentation faults during installation or pkg complaining about FreeBSD repository:
+
+```bash
+# Disable FreeBSD repositories (use OPNsense only)
+cat > /usr/local/etc/pkg/repos/FreeBSD.conf << 'EOF'
+FreeBSD: { enabled: no }
+FreeBSD-kmods: { enabled: no }
+EOF
+
+# Update package database
+pkg update
+
+# Try installation again
+cd /tmp/yori-0.2.0-freebsd-amd64
+sh install.sh
+```
+
 ### Service won't start
 
 Check logs:
