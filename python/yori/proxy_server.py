@@ -18,9 +18,16 @@ if __name__ == "__main__":
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
-import uvicorn
 from yori.config import YoriConfig
-from yori.proxy import ProxyServer
+
+# Check for optional dependencies
+try:
+    import uvicorn
+    from yori.proxy import ProxyServer
+    HAVE_PROXY = True
+except ImportError as e:
+    HAVE_PROXY = False
+    PROXY_ERROR = str(e)
 
 # Configure logging
 logging.basicConfig(
@@ -96,6 +103,22 @@ Examples:
 
 def main():
     """Start the YORI proxy server with TLS support"""
+
+    # Check if proxy dependencies are available
+    if not HAVE_PROXY:
+        logger.error("Proxy server dependencies not available")
+        logger.error(f"Missing dependency: {PROXY_ERROR}")
+        logger.error("")
+        logger.error("The YORI proxy server requires fastapi and uvicorn,")
+        logger.error("which need Rust to compile on FreeBSD.")
+        logger.error("")
+        logger.error("YORI can still function for policy evaluation and auditing,")
+        logger.error("but the HTTP proxy server is not available in minimal mode.")
+        logger.error("")
+        logger.error("To enable the proxy, install on a system with Rust available:")
+        logger.error("  pip install fastapi uvicorn")
+        sys.exit(1)
+
     args = parse_args()
 
     # Update logging level

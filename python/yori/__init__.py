@@ -29,10 +29,15 @@ except ImportError:
 
 # Import Python components
 from yori.config import YoriConfig
-from yori.proxy import ProxyServer
 from yori.models import EnforcementDecision, PolicyResult
 from yori.enforcement import should_enforce_policy
 from yori.consent import ConsentValidator, validate_enforcement_consent
+
+# Optional proxy server (requires FastAPI)
+try:
+    from yori.proxy import ProxyServer
+except ImportError:
+    ProxyServer = None  # type: ignore
 
 __all__ = [
     "PolicyEngine",
