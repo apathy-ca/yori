@@ -10,7 +10,7 @@ cd ~/Source/yori
 ./scripts/package_for_opnsense.sh
 ```
 
-This creates: `dist/yori-0.2.0-freebsd-amd64.tar.gz` (~500KB)
+This creates: `dist/yori-0.2.0-freebsd-amd64.tar.gz` (~19MB, includes all dependencies)
 
 ### Step 2: Copy to OPNsense
 
@@ -31,7 +31,7 @@ cd yori-0.2.0-freebsd-amd64
 sh install.sh
 ```
 
-That's it! No Rust compiler needed on OPNsense.
+That's it! No Rust compiler, no pip packages to download, completely self-contained.
 
 ## What Gets Installed
 

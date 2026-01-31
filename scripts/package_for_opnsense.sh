@@ -31,13 +31,35 @@ echo "[2/5] Creating package directory..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"/{lib,python,bin,etc,rc.d}
 
-echo "[3/5] Copying files..."
+echo "[3/5] Building Python dependencies locally..."
+# Create temporary venv to build dependencies
+TEMP_VENV=$(mktemp -d)
+python3.11 -m venv "$TEMP_VENV"
+"$TEMP_VENV/bin/pip" install --upgrade pip
+"$TEMP_VENV/bin/pip" install \
+    fastapi>=0.109.0 \
+    "uvicorn[standard]>=0.27.0" \
+    httpx>=0.26.0 \
+    pydantic>=2.5.0 \
+    pyyaml>=6.0 \
+    python-multipart>=0.0.6 \
+    aiosqlite>=0.19.0 \
+    jinja2>=3.1.0
+
+echo "[3.5/5] Copying files..."
 # Copy Rust extension
 cp target/x86_64-unknown-freebsd/release/libyori_core.so \
    "$BUILD_DIR/lib/yori_core.so"
 
 # Copy Python code
 cp -r python/yori "$BUILD_DIR/python/"
+
+# Copy all dependencies from temp venv
+mkdir -p "$BUILD_DIR/python-deps"
+cp -r "$TEMP_VENV/lib/python3.11/site-packages/"* "$BUILD_DIR/python-deps/"
+
+# Clean up temp venv
+rm -rf "$TEMP_VENV"
 
 # Copy example config
 mkdir -p "$BUILD_DIR/etc/yori/policies"
@@ -85,6 +107,11 @@ set -e
 PREFIX="${PREFIX:-/usr/local}"
 YORI_VENV="$PREFIX/yori-venv"
 
+# Clean up any leftover repo configs from failed builds
+echo "Cleaning up..."
+rm -f /usr/local/etc/pkg/repos/FreeBSD-temp.conf
+rm -f /usr/local/etc/pkg/repos/FreeBSD.conf 2>/dev/null || true
+
 echo "Installing YORI dependencies..."
 pkg install -y python311 py311-sqlite3
 
@@ -93,24 +120,19 @@ python3.11 -m ensurepip || true
 python3.11 -m venv "$YORI_VENV"
 
 echo "Installing YORI..."
-# Copy Rust extension to venv
-mkdir -p "$YORI_VENV/lib/python3.11/site-packages/yori"
+# Copy all bundled dependencies
+echo "Copying Python dependencies..."
+cp -r python-deps/* "$YORI_VENV/lib/python3.11/site-packages/"
+
+# Copy Rust extension
 cp lib/yori_core.so "$YORI_VENV/lib/python3.11/site-packages/"
 
 # Copy Python code
+mkdir -p "$YORI_VENV/lib/python3.11/site-packages/yori"
 cp -r python/yori/* "$YORI_VENV/lib/python3.11/site-packages/yori/"
 
-# Install Python dependencies in venv
-"$YORI_VENV/bin/pip" install --upgrade pip
-"$YORI_VENV/bin/pip" install \
-    fastapi>=0.109.0 \
-    "uvicorn[standard]>=0.27.0" \
-    httpx>=0.26.0 \
-    pydantic>=2.5.0 \
-    pyyaml>=6.0 \
-    python-multipart>=0.0.6 \
-    aiosqlite>=0.19.0 \
-    jinja2>=3.1.0
+# Upgrade pip in venv (optional but good practice)
+"$YORI_VENV/bin/pip" install --upgrade pip 2>/dev/null || true
 
 echo "Installing OPNsense UI files..."
 cp -r opnsense/* "$PREFIX/opnsense/"
