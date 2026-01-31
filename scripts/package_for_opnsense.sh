@@ -96,7 +96,11 @@ fi
 
 # Copy OPNsense UI files
 mkdir -p "$BUILD_DIR/opnsense"
-cp -r opnsense/src/opnsense "$BUILD_DIR/opnsense/"
+if [ -d opnsense/src/opnsense ]; then
+    cp -r opnsense/src/opnsense/* "$BUILD_DIR/opnsense/"
+else
+    echo "Warning: OPNsense UI files not found"
+fi
 
 echo "[4/5] Creating installation script..."
 cat > "$BUILD_DIR/install.sh" << 'INSTALLEOF'
@@ -140,10 +144,24 @@ cp -r python/yori/* "$YORI_VENV/lib/python3.11/site-packages/yori/"
 "$YORI_VENV/bin/pip" install --upgrade pip 2>/dev/null || true
 
 echo "Installing OPNsense UI files..."
-cp -r opnsense/* "$PREFIX/opnsense/"
-chown -R root:wheel "$PREFIX/opnsense/mvc/app/controllers/OPNsense/YORI"
-chown -R root:wheel "$PREFIX/opnsense/mvc/app/models/OPNsense/YORI"
-chown -R root:wheel "$PREFIX/opnsense/mvc/app/views/OPNsense/YORI"
+# Create OPNsense MVC directory structure if it doesn't exist
+mkdir -p "$PREFIX/opnsense/mvc/app/controllers/OPNsense"
+mkdir -p "$PREFIX/opnsense/mvc/app/models/OPNsense"
+mkdir -p "$PREFIX/opnsense/mvc/app/views/OPNsense"
+
+# Copy UI files
+cp -r opnsense/* "$PREFIX/opnsense/" 2>/dev/null || true
+
+# Set permissions if directories were created
+if [ -d "$PREFIX/opnsense/mvc/app/controllers/OPNsense/YORI" ]; then
+    chown -R root:wheel "$PREFIX/opnsense/mvc/app/controllers/OPNsense/YORI"
+fi
+if [ -d "$PREFIX/opnsense/mvc/app/models/OPNsense/YORI" ]; then
+    chown -R root:wheel "$PREFIX/opnsense/mvc/app/models/OPNsense/YORI"
+fi
+if [ -d "$PREFIX/opnsense/mvc/app/views/OPNsense/YORI" ]; then
+    chown -R root:wheel "$PREFIX/opnsense/mvc/app/views/OPNsense/YORI"
+fi
 
 echo "Installing configuration..."
 mkdir -p "$PREFIX/etc/yori/policies"
