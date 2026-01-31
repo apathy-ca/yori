@@ -7,6 +7,12 @@
 # Usage (on OPNsense):
 #   fetch https://raw.githubusercontent.com/apathy-ca/yori/main/scripts/build_wheel_on_opnsense_direct.sh
 #   sh build_wheel_on_opnsense_direct.sh
+#
+# Alternative manual approach:
+#   1. Enable FreeBSD repo: echo 'FreeBSD: { enabled: yes }' > /usr/local/etc/pkg/repos/FreeBSD.conf
+#   2. pkg update && pkg install rust python311 py311-sqlite3
+#   3. Follow build steps below
+#   4. Disable FreeBSD repo: rm /usr/local/etc/pkg/repos/FreeBSD.conf && pkg update
 
 set -e
 
@@ -29,9 +35,17 @@ esac
 YORI_VERSION="${YORI_VERSION:-0.2.0}"
 BUILD_DIR="/tmp/yori-build-$$"
 
-echo "[1/7] Creating temporary package repository configuration..."
+echo "[1/7] Detecting system ABI..."
+ABI=$(pkg -vv | grep "ABI" | cut -d'"' -f2)
+if [ -z "$ABI" ]; then
+    # Fallback to common OPNsense ABI
+    ABI="FreeBSD:13:amd64"
+fi
+echo "Detected ABI: $ABI"
+
+echo "[1.5/7] Creating temporary package repository configuration..."
 mkdir -p /usr/local/etc/pkg/repos
-cat > /usr/local/etc/pkg/repos/FreeBSD-temp.conf << 'EOF'
+cat > /usr/local/etc/pkg/repos/FreeBSD-temp.conf << EOF
 FreeBSD-temp: {
   url: "pkg+http://pkg.FreeBSD.org/${ABI}/latest",
   enabled: yes,
@@ -40,7 +54,23 @@ FreeBSD-temp: {
 EOF
 
 echo "[2/7] Updating package repository..."
-pkg update
+pkg update || {
+    echo "Warning: Failed to update with custom repo, trying alternative..."
+    # Try using FreeBSD official repo instead
+    cat > /usr/local/etc/pkg/repos/FreeBSD.conf << EOF
+FreeBSD: {
+  url: "pkg+http://pkg.FreeBSD.org/\${ABI}/latest",
+  enabled: yes
+}
+EOF
+    pkg update || {
+        echo "Error: Unable to configure FreeBSD package repository"
+        echo "Please check your network connection and try again"
+        rm -f /usr/local/etc/pkg/repos/FreeBSD-temp.conf
+        rm -f /usr/local/etc/pkg/repos/FreeBSD.conf
+        exit 1
+    }
+}
 
 echo "[3/7] Installing build dependencies..."
 pkg install -y rust python311 py311-sqlite3
@@ -61,7 +91,11 @@ maturin build --release
 
 echo "[7/7] Cleaning up..."
 rm -f /usr/local/etc/pkg/repos/FreeBSD-temp.conf
+rm -f /usr/local/etc/pkg/repos/FreeBSD.conf
 pkg update
+
+echo "Note: Rust compiler will remain installed."
+echo "To remove it later: pkg delete rust cargo"
 
 echo ""
 echo "=== Build Complete! ==="
