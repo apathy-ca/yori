@@ -15,11 +15,16 @@ echo ""
 echo "This will temporarily enable the FreeBSD package repository"
 echo "to install Rust compiler, build the wheel, then clean up."
 echo ""
-read -p "Continue? (y/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    exit 1
-fi
+printf "Continue? (y/N) "
+read REPLY
+case "$REPLY" in
+    [Yy]|[Yy][Ee][Ss])
+        ;;
+    *)
+        echo "Aborted."
+        exit 1
+        ;;
+esac
 
 YORI_VERSION="${YORI_VERSION:-0.2.0}"
 BUILD_DIR="/tmp/yori-build-$$"
