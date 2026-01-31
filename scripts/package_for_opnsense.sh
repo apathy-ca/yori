@@ -31,22 +31,7 @@ echo "[2/5] Creating package directory..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"/{lib,python,bin,etc,rc.d}
 
-echo "[3/5] Building Python dependencies locally..."
-# Create temporary venv to build dependencies
-TEMP_VENV=$(mktemp -d)
-python3.11 -m venv "$TEMP_VENV"
-"$TEMP_VENV/bin/pip" install --upgrade pip
-"$TEMP_VENV/bin/pip" install \
-    fastapi>=0.109.0 \
-    "uvicorn[standard]>=0.27.0" \
-    httpx>=0.26.0 \
-    pydantic>=2.5.0 \
-    pyyaml>=6.0 \
-    python-multipart>=0.0.6 \
-    aiosqlite>=0.19.0 \
-    jinja2>=3.1.0
-
-echo "[3.5/5] Copying files..."
+echo "[3/5] Copying files..."
 # Copy Rust extension
 cp target/x86_64-unknown-freebsd/release/libyori_core.so \
    "$BUILD_DIR/lib/yori_core.so"
@@ -54,12 +39,24 @@ cp target/x86_64-unknown-freebsd/release/libyori_core.so \
 # Copy Python code
 cp -r python/yori "$BUILD_DIR/python/"
 
-# Copy all dependencies from temp venv
-mkdir -p "$BUILD_DIR/python-deps"
-cp -r "$TEMP_VENV/lib/python3.11/site-packages/"* "$BUILD_DIR/python-deps/"
+# Create requirements.txt for installation on target
+cat > "$BUILD_DIR/requirements.txt" << 'REQEOF'
+# YORI Python Dependencies
+# Installed on OPNsense during setup
 
-# Clean up temp venv
-rm -rf "$TEMP_VENV"
+# Core dependencies (minimal versions for router constraints)
+pyyaml>=6.0
+aiosqlite>=0.19.0
+jinja2>=3.1.0
+
+# Optional: Web framework (if needed for API)
+# These have compiled extensions - will try binary wheels first, fall back to pure Python
+fastapi>=0.109.0
+uvicorn>=0.27.0
+httpx>=0.26.0
+pydantic>=2.5.0
+python-multipart>=0.0.6
+REQEOF
 
 # Copy example config
 mkdir -p "$BUILD_DIR/etc/yori/policies"
@@ -129,9 +126,17 @@ python3.11 -m ensurepip || true
 python3.11 -m venv "$YORI_VENV"
 
 echo "Installing YORI..."
-# Copy all bundled dependencies
-echo "Copying Python dependencies..."
-cp -r python-deps/* "$YORI_VENV/lib/python3.11/site-packages/"
+
+# Upgrade pip in venv
+"$YORI_VENV/bin/pip" install --upgrade pip
+
+# Install Python dependencies
+echo "Installing Python dependencies (this may take a few minutes)..."
+"$YORI_VENV/bin/pip" install -r requirements.txt || {
+    echo "Warning: Some dependencies failed to install"
+    echo "Installing minimal dependencies only..."
+    "$YORI_VENV/bin/pip" install pyyaml aiosqlite jinja2
+}
 
 # Copy Rust extension
 cp lib/yori_core.so "$YORI_VENV/lib/python3.11/site-packages/"
@@ -139,9 +144,6 @@ cp lib/yori_core.so "$YORI_VENV/lib/python3.11/site-packages/"
 # Copy Python code
 mkdir -p "$YORI_VENV/lib/python3.11/site-packages/yori"
 cp -r python/yori/* "$YORI_VENV/lib/python3.11/site-packages/yori/"
-
-# Upgrade pip in venv (optional but good practice)
-"$YORI_VENV/bin/pip" install --upgrade pip 2>/dev/null || true
 
 echo "Installing OPNsense UI files..."
 # Create OPNsense MVC directory structure if it doesn't exist

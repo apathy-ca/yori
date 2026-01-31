@@ -10,7 +10,7 @@ cd ~/Source/yori
 ./scripts/package_for_opnsense.sh
 ```
 
-This creates: `dist/yori-0.2.0-freebsd-amd64.tar.gz` (~19MB, includes all dependencies)
+This creates: `dist/yori-0.2.0-freebsd-amd64.tar.gz` (~476KB)
 
 ### Step 2: Copy to OPNsense
 
@@ -31,9 +31,13 @@ cd yori-0.2.0-freebsd-amd64
 sh install.sh
 ```
 
-That's it! No Rust compiler, no pip packages to download, no pkg operations, completely self-contained.
+That's it! The installer will download Python dependencies via pip during installation.
 
-**Note:** Python 3.11 must already be installed on OPNsense (it comes pre-installed on standard OPNsense). Everything else is bundled.
+**Requirements:**
+- Python 3.11 (pre-installed on OPNsense)
+- Internet connection (to download dependencies)
+
+**Installation time:** ~3-5 minutes (most time is downloading/installing dependencies)
 
 ## What Gets Installed
 
