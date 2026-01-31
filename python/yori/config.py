@@ -6,8 +6,12 @@ Loads configuration from YAML files and provides type-safe access.
 
 from pathlib import Path
 from typing import List, Literal, Optional
-from pydantic import BaseModel, Field
 import yaml
+
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from yori.pydantic_compat import BaseModel, Field
 
 from yori.models import EnforcementConfig
 

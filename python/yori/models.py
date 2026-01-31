@@ -6,8 +6,12 @@ Defines Pydantic models for configuration and runtime data structures.
 
 from datetime import datetime, time
 from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
 from ipaddress import IPv4Address, IPv6Address
+
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from yori.pydantic_compat import BaseModel, Field
 
 
 class AllowlistDevice(BaseModel):
