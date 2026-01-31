@@ -1,0 +1,17 @@
+@sample etc/yori/yori.conf.sample
+etc/rc.d/yori
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/AllowlistController.php
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/EmergencyController.php
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/EnforcementController.php
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/EnforcementStatsController.php
+opnsense/mvc/app/models/OPNsense/YORI/Enforcement.xml
+opnsense/mvc/app/models/OPNsense/YORI/EnforcementForm.xml
+opnsense/mvc/app/views/OPNsense/YORI/allowlist.volt
+opnsense/mvc/app/views/OPNsense/YORI/emergency.volt
+opnsense/mvc/app/views/OPNsense/YORI/enforcement.volt
+opnsense/mvc/app/views/OPNsense/YORI/enforcement_dashboard.volt
+opnsense/mvc/app/views/OPNsense/YORI/enforcement_timeline.volt
+opnsense/mvc/app/views/OPNsense/YORI/widgets/enforcement_status.volt
+@dir /var/db/yori
+@dir /var/log/yori
+@dir etc/yori/policies

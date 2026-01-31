@@ -12,11 +12,13 @@ license = "MIT"
 repository = "https://github.com/apathy-ca/yori"
 
 [workspace.dependencies]
-# SARK components - path dependencies during development
-# Switch to git dependencies for releases:
-#   sark-opa = { git = "https://github.com/apathy-ca/sark", tag = "v1.6.0" }
-sark-opa = { path = "../sark/rust/sark-opa" }
-sark-cache = { path = "../sark/rust/sark-cache" }
+# SARK components - git dependencies for cross-compilation
+sark-opa = { git = "https://github.com/apathy-ca/sark", rev = "33b82fc6b4c3aa3c465ee9e1f849fa25c9cdcae0" }
+sark-cache = { git = "https://github.com/apathy-ca/sark", rev = "33b82fc6b4c3aa3c465ee9e1f849fa25c9cdcae0" }
+
+# For local development, use path dependencies:
+#   sark-opa = { path = "../sark/rust/sark-opa" }
+#   sark-cache = { path = "../sark/rust/sark-cache" }
 
 # PyO3 for Python bindings (must match SARK crates)
 pyo3 = { version = "0.22", features = ["extension-module"] }

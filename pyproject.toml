@@ -56,6 +56,7 @@ Issues = "https://github.com/apathy-ca/yori/issues"
 # Build the Rust extension as a Python module
 python-source = "python"
 module-name = "yori._core"
+manifest-path = "rust/yori-core/Cargo.toml"
 features = ["pyo3/extension-module"]
 
 [tool.black]

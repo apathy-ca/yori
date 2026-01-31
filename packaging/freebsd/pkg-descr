@@ -1,0 +1,17 @@
+YORI (Your Oversight for Responsible Intelligence) is a zero-trust LLM governance
+proxy designed for home networks running on OPNsense routers.
+
+It provides transparent interception and policy-based enforcement of LLM API
+traffic (OpenAI, Anthropic, etc.) with features specifically designed for
+family safety:
+
+- Device allowlists and time-based exceptions
+- Parental controls (homework hours, bedtime blocking)
+- Emergency override mechanisms
+- Comprehensive audit logging
+- Web UI integration with OPNsense
+
+YORI uses SARK (Secure Autonomous Runtime for Kubernetes) components for
+high-performance policy evaluation and caching.
+
+WWW: https://github.com/apathy-ca/yori
