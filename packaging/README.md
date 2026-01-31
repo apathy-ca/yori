@@ -19,17 +19,25 @@ fetch https://raw.githubusercontent.com/apathy-ca/yori/main/install.sh
 sh install.sh
 ```
 
-**What it does:**
-- Detects OPNsense version
-- Installs dependencies (Python, pip)
-- Downloads pre-built wheel from GitHub releases
-- Installs YORI Python package
-- Copies OPNsense UI files
-- Creates configuration files
-- Installs and enables rc.d service
-- Configures OPNsense integration
+**With a local wheel file:**
+```bash
+# If you've built the wheel locally
+YORI_WHEEL=/path/to/yori-0.2.0-*.whl sh install.sh
+```
 
-**Time:** ~2-3 minutes
+**What it does:**
+1. Detects OPNsense version
+2. Tries to download pre-built wheel from GitHub releases
+3. Falls back to building from source if no release available
+4. Or uses local wheel if YORI_WHEEL is set
+5. Installs in isolated venv (/usr/local/yori-venv)
+6. Copies OPNsense UI files
+7. Creates configuration files
+8. Installs and enables rc.d service
+
+**Time:**
+- ~2-3 minutes (with pre-built wheel)
+- ~5-10 minutes (building from source)
 
 ### Method 2: FreeBSD Package (Future - Most Professional)
 
@@ -77,21 +85,41 @@ python -m build --wheel
 # 3. Copy wheel back to dist/
 ```
 
-### Creating GitHub Release
+### Creating GitHub Release with Pre-Built Wheel
+
+To make installation faster for users, create a release with a pre-built FreeBSD wheel:
 
 ```bash
-# 1. Build FreeBSD wheel
-maturin build --release --target x86_64-unknown-freebsd
+# Option A: Build on OPNsense (most reliable)
+ssh root@opnsense
+pkg install rust python311 py311-sqlite3
+python3.11 -m ensurepip
+python3.11 -m pip install maturin
+cd /tmp
+fetch https://github.com/apathy-ca/yori/archive/refs/tags/v0.2.0.tar.gz
+tar xzf v0.2.0.tar.gz
+cd yori-0.2.0
+maturin build --release
+# Wheel is in: target/wheels/yori-0.2.0-cp39-abi3-freebsd_13_x86_64.whl
 
-# 2. Create release
+# Copy back to dev machine
+scp root@opnsense:/tmp/yori-0.2.0/target/wheels/yori-*.whl .
+
+# Option B: Cross-compile with cross (less reliable, dependency issues)
+cross build --release --target x86_64-unknown-freebsd --manifest-path rust/yori-core/Cargo.toml --lib
+# Then manually package into wheel (complex)
+
+# Create GitHub release
 gh release create v0.2.0 \
-  target/wheels/yori-0.2.0-*.whl \
+  yori-0.2.0-cp39-abi3-freebsd_13_x86_64.whl \
   --title "YORI v0.2.0" \
   --notes "See CHANGELOG.md"
 
-# 3. Test installer
+# Test installer downloads correctly
 curl -sSL https://raw.githubusercontent.com/apathy-ca/yori/v0.2.0/install.sh | sh
 ```
+
+**If no release exists**, the installer will automatically fall back to building from source on the target OPNsense system.
 
 ## Directory Structure
 

@@ -1,10 +1,15 @@
 #!/bin/sh
 # YORI OPNsense Installation Script
 # Usage: curl -sSL https://get.yori.dev/install.sh | sh
+#
+# Environment variables:
+#   YORI_VERSION - Version to install (default: 0.2.0)
+#   YORI_WHEEL   - Path to local wheel file (skips download/build)
 
 set -e
 
 YORI_VERSION="${YORI_VERSION:-0.2.0}"
+YORI_WHEEL="${YORI_WHEEL:-}"
 YORI_REPO="apathy-ca/yori"
 INSTALL_DIR="/usr/local"
 CONFIG_DIR="/usr/local/etc/yori"
@@ -40,16 +45,48 @@ if ! python3.11 -m pip --version >/dev/null 2>&1; then
     python3.11 -m pip install --upgrade pip
 fi
 
-echo "[2/8] Downloading YORI package..."
-WHEEL_URL="https://github.com/${YORI_REPO}/releases/download/v${YORI_VERSION}/yori-${YORI_VERSION}-cp39-abi3-freebsd_13_x86_64.whl"
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR"
 
-fetch "$WHEEL_URL" || {
-    echo "Error: Failed to download YORI wheel"
-    echo "URL: $WHEEL_URL"
-    exit 1
-}
+if [ -n "$YORI_WHEEL" ]; then
+    echo "[2/8] Using local wheel: $YORI_WHEEL"
+    if [ ! -f "$YORI_WHEEL" ]; then
+        echo "Error: Wheel file not found: $YORI_WHEEL"
+        exit 1
+    fi
+    cp "$YORI_WHEEL" .
+elif fetch "https://github.com/${YORI_REPO}/releases/download/v${YORI_VERSION}/yori-${YORI_VERSION}-cp39-abi3-freebsd_13_x86_64.whl" 2>/dev/null; then
+    echo "[2/8] Downloaded pre-built wheel"
+else
+    echo "[2/8] Downloading YORI package..."
+    echo "Pre-built wheel not available, building from source..."
+    echo "This will take 5-10 minutes..."
+
+    # Install build dependencies
+    pkg install -y rust
+
+    # Download source
+    SOURCE_URL="https://github.com/${YORI_REPO}/archive/refs/tags/v${YORI_VERSION}.tar.gz"
+    fetch "$SOURCE_URL" -o yori-source.tar.gz || {
+        echo "Error: Failed to download YORI source"
+        echo "URL: $SOURCE_URL"
+        exit 1
+    }
+
+    tar xzf yori-source.tar.gz
+    cd "yori-${YORI_VERSION}"
+
+    # Bootstrap pip and install maturin
+    python3.11 -m ensurepip
+    python3.11 -m pip install --upgrade pip maturin
+
+    # Build wheel
+    maturin build --release
+
+    # Copy wheel to temp dir
+    cp target/wheels/yori-*.whl "$TEMP_DIR/"
+    cd "$TEMP_DIR"
+fi
 
 echo "[3/8] Creating virtual environment..."
 python3.11 -m venv /usr/local/yori-venv
