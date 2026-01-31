@@ -39,23 +39,17 @@ cp target/x86_64-unknown-freebsd/release/libyori_core.so \
 # Copy Python code
 cp -r python/yori "$BUILD_DIR/python/"
 
-# Create requirements.txt for installation on target
+# Create requirements.txt (for reference, not used in install)
 cat > "$BUILD_DIR/requirements.txt" << 'REQEOF'
 # YORI Python Dependencies
-# Installed on OPNsense during setup
-
-# Core dependencies (minimal versions for router constraints)
+# Core dependencies (pure Python, no compilation needed):
 pyyaml>=6.0
 aiosqlite>=0.19.0
 jinja2>=3.1.0
 
-# Optional: Web framework (if needed for API)
-# These have compiled extensions - will try binary wheels first, fall back to pure Python
-fastapi>=0.109.0
-uvicorn>=0.27.0
-httpx>=0.26.0
-pydantic>=2.5.0
-python-multipart>=0.0.6
+# Optional dependencies (may not be available on FreeBSD without Rust):
+# fastapi, uvicorn, pydantic, httpx
+# YORI can run in minimal mode without these
 REQEOF
 
 # Copy example config
@@ -130,12 +124,21 @@ echo "Installing YORI..."
 # Upgrade pip in venv
 "$YORI_VENV/bin/pip" install --upgrade pip
 
-# Install Python dependencies
-echo "Installing Python dependencies (this may take a few minutes)..."
-"$YORI_VENV/bin/pip" install -r requirements.txt || {
-    echo "Warning: Some dependencies failed to install"
-    echo "Installing minimal dependencies only..."
-    "$YORI_VENV/bin/pip" install pyyaml aiosqlite jinja2
+# Clear pip cache to avoid corruption
+rm -rf /root/.cache/pip 2>/dev/null || true
+
+# Install minimal Python dependencies (no compiled extensions)
+echo "Installing Python dependencies..."
+"$YORI_VENV/bin/pip" install --no-cache-dir pyyaml aiosqlite jinja2 || {
+    echo "Error: Failed to install basic dependencies"
+    exit 1
+}
+
+# Try to install optional web framework dependencies (may fail on FreeBSD)
+echo "Attempting to install optional web framework dependencies..."
+"$YORI_VENV/bin/pip" install --no-cache-dir --only-binary :all: \
+    starlette httpx anyio 2>/dev/null || {
+    echo "Note: Web framework dependencies not available, will use minimal mode"
 }
 
 # Copy Rust extension
