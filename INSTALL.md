@@ -178,14 +178,65 @@ The package script does:
 3. Creates self-contained tarball
 4. No Rust needed on OPNsense!
 
-## Updates
+## Upgrades
 
-To update YORI:
+The installer automatically detects existing installations and offers upgrade options.
 
-1. Build new package on dev machine
-2. Stop service: `service yori stop`
-3. Extract new package over old one
-4. Run install script again
-5. Start service: `service yori start`
+### Option 1: Upgrade (Recommended)
 
-Configuration is preserved during updates.
+Keeps your configuration and backs up the database:
+
+```bash
+# Copy new package to OPNsense
+scp dist/yori-0.2.0-freebsd-amd64.tar.gz root@OPNsense:/tmp/
+
+# SSH and run installer
+ssh root@OPNsense
+cd /tmp
+tar xzf yori-0.2.0-freebsd-amd64.tar.gz
+cd yori-0.2.0-freebsd-amd64
+sh install.sh
+
+# Choose option "1" (Upgrade)
+# - Stops service
+# - Backs up config (yori.conf.bak.TIMESTAMP)
+# - Backs up database (audit.db.bak.TIMESTAMP)
+# - Installs new version
+# - Preserves your configuration
+# - Restarts service
+```
+
+### Option 2: Clean Install
+
+Wipes everything and starts fresh:
+
+```bash
+# Same steps, but choose option "2" when prompted
+# - Stops service
+# - Removes all YORI files
+# - Installs fresh
+# - Uses default configuration
+```
+
+### Manual Upgrade (Advanced)
+
+If you want full control:
+
+```bash
+# Stop service
+service yori stop
+
+# Backup config and database
+cp /usr/local/etc/yori/yori.conf ~/yori.conf.backup
+cp /var/db/yori/audit.db ~/audit.db.backup
+
+# Install new version
+cd /tmp/yori-0.2.0-freebsd-amd64
+sh install.sh  # Choose option 2 (clean)
+
+# Restore your config
+cp ~/yori.conf.backup /usr/local/etc/yori/yori.conf
+
+# Start service
+service yori start
+```

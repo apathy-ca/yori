@@ -111,6 +111,54 @@ set -e
 PREFIX="${PREFIX:-/usr/local}"
 YORI_VENV="$PREFIX/yori-venv"
 
+# Check if YORI is already installed
+if [ -f "$PREFIX/bin/yori-proxy" ] || [ -d "$YORI_VENV" ]; then
+    echo "═══════════════════════════════════════════"
+    echo "Existing YORI installation detected"
+    echo "═══════════════════════════════════════════"
+
+    if [ -f "$PREFIX/bin/yori-proxy" ]; then
+        CURRENT_VERSION=$("$PREFIX/bin/yori-proxy" --version 2>/dev/null | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' || echo "unknown")
+        echo "Installed version: $CURRENT_VERSION"
+    fi
+
+    echo ""
+    echo "Upgrade options:"
+    echo "  1. Upgrade (keep config, backup database)"
+    echo "  2. Clean install (wipe everything)"
+    echo ""
+    printf "Choose [1-2] or Ctrl+C to cancel: "
+    read UPGRADE_CHOICE
+
+    case "$UPGRADE_CHOICE" in
+        1)
+            echo "Performing upgrade..."
+            # Stop service
+            service yori stop 2>/dev/null || true
+
+            # Backup database and config
+            if [ -f /var/db/yori/audit.db ]; then
+                echo "Backing up database..."
+                cp /var/db/yori/audit.db /var/db/yori/audit.db.bak.$(date +%Y%m%d-%H%M%S)
+            fi
+            ;;
+        2)
+            echo "Performing clean install..."
+            service yori stop 2>/dev/null || true
+            rm -rf "$YORI_VENV"
+            rm -rf "$PREFIX/bin/yori-proxy"
+            rm -rf /var/db/yori
+            rm -rf /var/log/yori
+            echo "Old installation removed."
+            ;;
+        *)
+            echo "Invalid choice. Exiting."
+            exit 1
+            ;;
+    esac
+    echo ""
+fi
+
 # Check if Python is already installed (it should be on OPNsense)
 echo "Checking for Python 3.11..."
 if ! python3.11 --version >/dev/null 2>&1; then
@@ -181,7 +229,14 @@ echo "Installing configuration..."
 mkdir -p "$PREFIX/etc/yori/policies"
 mkdir -p /var/db/yori
 mkdir -p /var/log/yori
-if [ ! -f "$PREFIX/etc/yori/yori.conf" ]; then
+
+# Backup existing config if it exists
+if [ -f "$PREFIX/etc/yori/yori.conf" ]; then
+    echo "Existing configuration found, creating backup..."
+    cp "$PREFIX/etc/yori/yori.conf" "$PREFIX/etc/yori/yori.conf.bak.$(date +%Y%m%d-%H%M%S)"
+    echo "Config backed up to yori.conf.bak.*"
+else
+    echo "Installing default configuration..."
     cp etc/yori/yori.conf "$PREFIX/etc/yori/"
 fi
 
