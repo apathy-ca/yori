@@ -23,20 +23,29 @@ if ! command -v cross &> /dev/null; then
     exit 1
 fi
 
-echo "[1/5] Cross-compiling Rust extension for FreeBSD..."
+echo "[1/5] Cross-compiling Rust components for FreeBSD..."
+echo "Building yori-core library..."
 cross build --release --target x86_64-unknown-freebsd \
     --manifest-path rust/yori-core/Cargo.toml --lib
+
+echo "Building yori-proxy binary..."
+cross build --release --target x86_64-unknown-freebsd -p yori-proxy
 
 echo "[2/5] Creating package directory..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"/{lib,python,bin,etc,rc.d}
 
 echo "[3/5] Copying files..."
-# Copy Rust extension
+# Copy Rust binary (main proxy server)
+mkdir -p "$BUILD_DIR/bin"
+cp target/x86_64-unknown-freebsd/release/yori-proxy \
+   "$BUILD_DIR/bin/"
+
+# Copy Rust extension (for Python bindings)
 cp target/x86_64-unknown-freebsd/release/libyori_core.so \
    "$BUILD_DIR/lib/yori_core.so"
 
-# Copy Python code
+# Copy Python code (for optional Python tools/UI)
 cp -r python/yori "$BUILD_DIR/python/"
 
 # Create requirements.txt (for reference, not used in install)
@@ -176,6 +185,11 @@ if [ ! -f "$PREFIX/etc/yori/yori.conf" ]; then
     cp etc/yori/yori.conf "$PREFIX/etc/yori/"
 fi
 
+echo "Installing Rust proxy binary..."
+mkdir -p "$PREFIX/bin"
+cp bin/yori-proxy "$PREFIX/bin/"
+chmod +x "$PREFIX/bin/yori-proxy"
+
 echo "Installing rc.d service..."
 cat > "$PREFIX/etc/rc.d/yori" << 'RCEOF'
 #!/bin/sh
@@ -195,8 +209,8 @@ load_rc_config $name
 : ${yori_pidfile:="/var/run/yori.pid"}
 : ${yori_log:="/var/log/yori/yori.log"}
 
-command="/usr/local/yori-venv/bin/python3.11"
-command_args="-m yori.proxy_server --config ${yori_config}"
+command="/usr/local/bin/yori-proxy"
+command_args="--config ${yori_config}"
 pidfile="${yori_pidfile}"
 
 start_cmd="${name}_start"
@@ -204,7 +218,7 @@ stop_cmd="${name}_stop"
 
 yori_start()
 {
-    echo "Starting ${name}."
+    echo "Starting ${name} (Rust proxy - maximum performance)."
     /usr/sbin/daemon -p ${pidfile} ${command} ${command_args} >> ${yori_log} 2>&1
 }
 

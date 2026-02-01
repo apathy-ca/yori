@@ -1,0 +1,46 @@
+[package]
+name = "yori-proxy"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "yori-proxy"
+path = "src/main.rs"
+
+[dependencies]
+# SARK components (from workspace)
+sark-opa.workspace = true
+sark-cache.workspace = true
+
+# HTTP proxy
+hyper = { workspace = true, features = ["server", "http1"] }
+hyper-util.workspace = true
+http-body-util = "0.1"
+tokio.workspace = true
+rustls.workspace = true
+rustls-pemfile.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Async
+futures.workspace = true
+
+# Time handling
+chrono.workspace = true
+
+# CLI argument parsing
+clap = { version = "4.4", features = ["derive"] }
