@@ -18,8 +18,8 @@ grid-opa = { git = "https://github.com/apathy-ca/grid-core" }
 grid-cache = { git = "https://github.com/apathy-ca/grid-core" }
 
 # For local development, use path dependencies:
-#   grid-opa = { path = "../sark-core/crates/grid-opa" }
-#   grid-cache = { path = "../sark-core/crates/grid-cache" }
+#   grid-opa = { path = "../grid-core/crates/grid-opa" }
+#   grid-cache = { path = "../grid-core/crates/grid-cache" }
 
 # PyO3 for Python bindings (must match SARK crates)
 pyo3 = { version = "0.22", features = ["extension-module"] }
