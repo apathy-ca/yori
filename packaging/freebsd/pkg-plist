@@ -1,17 +1,79 @@
 @sample etc/yori/yori.conf.sample
 etc/rc.d/yori
+
+# OPNsense plugin metadata
+opnsense/core/share/metainfo/os-yori.xml
+
+# OPNsense service configuration
+opnsense/service/conf/actions.d/actions_yori.conf
+
+# OPNsense API controllers
+opnsense/mvc/app/controllers/OPNsense/YORI/IndexController.php
 opnsense/mvc/app/controllers/OPNsense/YORI/Api/AllowlistController.php
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/AuditController.php
 opnsense/mvc/app/controllers/OPNsense/YORI/Api/EmergencyController.php
 opnsense/mvc/app/controllers/OPNsense/YORI/Api/EnforcementController.php
 opnsense/mvc/app/controllers/OPNsense/YORI/Api/EnforcementStatsController.php
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/PolicyController.php
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/ReportController.php
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/SettingsController.php
+opnsense/mvc/app/controllers/OPNsense/YORI/Api/TokenController.php
+
+# OPNsense models
+opnsense/mvc/app/models/OPNsense/YORI/ACL/ACL.xml
+opnsense/mvc/app/models/OPNsense/YORI/Menu/Menu.xml
 opnsense/mvc/app/models/OPNsense/YORI/Enforcement.xml
 opnsense/mvc/app/models/OPNsense/YORI/EnforcementForm.xml
+opnsense/mvc/app/models/OPNsense/YORI/Settings.xml
+
+# OPNsense views
 opnsense/mvc/app/views/OPNsense/YORI/allowlist.volt
+opnsense/mvc/app/views/OPNsense/YORI/auditlog.volt
+opnsense/mvc/app/views/OPNsense/YORI/costs.volt
+opnsense/mvc/app/views/OPNsense/YORI/dashboard.volt
 opnsense/mvc/app/views/OPNsense/YORI/emergency.volt
 opnsense/mvc/app/views/OPNsense/YORI/enforcement.volt
 opnsense/mvc/app/views/OPNsense/YORI/enforcement_dashboard.volt
 opnsense/mvc/app/views/OPNsense/YORI/enforcement_timeline.volt
+opnsense/mvc/app/views/OPNsense/YORI/policies.volt
+opnsense/mvc/app/views/OPNsense/YORI/policy_editor.volt
+opnsense/mvc/app/views/OPNsense/YORI/policy_library.volt
+opnsense/mvc/app/views/OPNsense/YORI/reports.volt
+opnsense/mvc/app/views/OPNsense/YORI/settings.volt
+opnsense/mvc/app/views/OPNsense/YORI/tokens.volt
+
+# OPNsense widgets
 opnsense/mvc/app/views/OPNsense/YORI/widgets/enforcement_status.volt
+opnsense/mvc/app/views/OPNsense/YORI/widgets/request_summary.volt
+opnsense/mvc/app/views/OPNsense/YORI/widgets/service_status.volt
+
+# Pre-built policies (v0.3.0)
+etc/yori/policies/home_default.rego
+etc/yori/policies/bedtime.rego
+etc/yori/policies/high_usage.rego
+etc/yori/policies/homework_helper.rego
+etc/yori/policies/privacy_check.rego
+etc/yori/policies/cost_limit.rego
+etc/yori/policies/device_restrict.rego
+etc/yori/policies/weekend_only.rego
+etc/yori/policies/work_hours.rego
+etc/yori/policies/content_filter.rego
+
+# Additional policies (v0.4.0)
+etc/yori/policies/rate_limit.rego
+etc/yori/policies/model_restrict.rego
+etc/yori/policies/endpoint_restrict.rego
+etc/yori/policies/prompt_length.rego
+etc/yori/policies/response_audit.rego
+etc/yori/policies/family_filter.rego
+etc/yori/policies/token_budget.rego
+etc/yori/policies/school_hours.rego
+etc/yori/policies/guest_network.rego
+etc/yori/policies/admin_bypass.rego
+etc/yori/policies/code_assist.rego
+etc/yori/policies/creative_writing.rego
+
+# Directories
 @dir /var/db/yori
 @dir /var/log/yori
 @dir etc/yori/policies

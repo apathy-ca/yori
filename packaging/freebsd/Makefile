@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	yori
-PORTVERSION=	0.2.0
+PORTVERSION=	0.4.0
 CATEGORIES=	net security python
 MASTER_SITES=	https://github.com/apathy-ca/${PORTNAME}/releases/download/v${PORTVERSION}/
 

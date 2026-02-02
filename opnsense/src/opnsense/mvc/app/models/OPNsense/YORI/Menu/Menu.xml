@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+    Copyright (C) 2026 YORI Project
+    All rights reserved.
+-->
+<menu>
+    <Services order="30">
+        <YORI VisibleName="YORI LLM Gateway" cssclass="fa fa-shield" url="/ui/yori" order="50">
+            <Dashboard VisibleName="Dashboard" url="/ui/yori/dashboard" order="1"/>
+            <AuditLog VisibleName="Audit Log" url="/ui/yori/auditlog" order="2"/>
+            <Tokens VisibleName="Token Usage" url="/ui/yori/tokens" order="3"/>
+            <Costs VisibleName="Costs &amp; Budgets" url="/ui/yori/costs" order="4"/>
+            <Reports VisibleName="Reports" url="/ui/yori/reports" order="5"/>
+            <Policies VisibleName="Policies" url="/ui/yori/policies" order="6"/>
+            <Enforcement VisibleName="Enforcement" url="/ui/yori/enforcement" order="7"/>
+            <Allowlist VisibleName="Allowlist" url="/ui/yori/allowlist" order="8"/>
+            <Emergency VisibleName="Emergency" url="/ui/yori/emergency" order="9"/>
+            <Settings VisibleName="Settings" url="/ui/yori/settings" order="10"/>
+        </YORI>
+    </Services>
+</menu>

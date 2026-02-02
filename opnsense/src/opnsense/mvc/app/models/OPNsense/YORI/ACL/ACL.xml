@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<!--
+    Copyright (C) 2026 YORI Project
+    All rights reserved.
+
+    ACL definitions for YORI LLM Gateway plugin.
+    Defines permissions for viewing, editing, and emergency operations.
+-->
+<acl>
+    <page-services-yori>
+        <name>Services: YORI LLM Gateway</name>
+        <description>Allow access to YORI LLM Gateway service</description>
+        <patterns>
+            <pattern>ui/yori/*</pattern>
+            <pattern>api/yori/*</pattern>
+        </patterns>
+    </page-services-yori>
+    <page-services-yori-view>
+        <name>Services: YORI LLM Gateway: View</name>
+        <description>Allow viewing YORI dashboard and audit logs</description>
+        <patterns>
+            <pattern>ui/yori/dashboard</pattern>
+            <pattern>ui/yori/auditlog</pattern>
+            <pattern>api/yori/audit/*</pattern>
+            <pattern>api/yori/enforcement/status</pattern>
+            <pattern>api/yori/enforcement/stats/*</pattern>
+            <pattern>api/yori/settings/get</pattern>
+        </patterns>
+    </page-services-yori-view>
+    <page-services-yori-edit>
+        <name>Services: YORI LLM Gateway: Edit</name>
+        <description>Allow editing YORI configuration and policies</description>
+        <patterns>
+            <pattern>ui/yori/settings</pattern>
+            <pattern>ui/yori/policies</pattern>
+            <pattern>ui/yori/enforcement</pattern>
+            <pattern>ui/yori/allowlist</pattern>
+            <pattern>api/yori/settings/*</pattern>
+            <pattern>api/yori/policy/*</pattern>
+            <pattern>api/yori/enforcement/*</pattern>
+            <pattern>api/yori/allowlist/*</pattern>
+        </patterns>
+    </page-services-yori-edit>
+    <page-services-yori-emergency>
+        <name>Services: YORI LLM Gateway: Emergency</name>
+        <description>Allow emergency override operations</description>
+        <patterns>
+            <pattern>ui/yori/emergency</pattern>
+            <pattern>api/yori/emergency/*</pattern>
+        </patterns>
+    </page-services-yori-emergency>
+</acl>

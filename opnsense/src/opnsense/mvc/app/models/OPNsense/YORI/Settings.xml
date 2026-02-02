@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<!--
+    Copyright (C) 2026 YORI Project
+    All rights reserved.
+
+    YORI Settings Model - Defines all configuration fields
+-->
+<model>
+    <mount>//OPNsense/YORI/settings</mount>
+    <description>YORI LLM Gateway Settings</description>
+    <version>0.4.0</version>
+    <items>
+        <!-- General Settings -->
+        <general>
+            <mode type="OptionField">
+                <default>observe</default>
+                <Required>Y</Required>
+                <OptionValues>
+                    <observe>Observe - Log only, no alerts or blocking</observe>
+                    <advisory>Advisory - Log and send alerts</advisory>
+                    <enforce>Enforce - Log, alert, and optionally block</enforce>
+                </OptionValues>
+                <ValidationMessage>Select a valid mode</ValidationMessage>
+            </mode>
+            <listen_address type="TextField">
+                <default>0.0.0.0</default>
+                <Required>Y</Required>
+                <mask>/^[\w\.\*]+$/</mask>
+                <ValidationMessage>Enter a valid IP address or hostname</ValidationMessage>
+            </listen_address>
+            <listen_port type="IntegerField">
+                <default>8443</default>
+                <Required>Y</Required>
+                <MinimumValue>1</MinimumValue>
+                <MaximumValue>65535</MaximumValue>
+                <ValidationMessage>Port must be between 1 and 65535</ValidationMessage>
+            </listen_port>
+        </general>
+
+        <!-- TLS Settings -->
+        <tls>
+            <enabled type="BooleanField">
+                <default>1</default>
+                <Required>Y</Required>
+            </enabled>
+            <cert_path type="TextField">
+                <default>/usr/local/etc/yori/certs/yori.crt</default>
+                <Required>N</Required>
+            </cert_path>
+            <key_path type="TextField">
+                <default>/usr/local/etc/yori/certs/yori.key</default>
+                <Required>N</Required>
+            </key_path>
+            <ca_path type="TextField">
+                <default>/usr/local/etc/yori/certs/ca.crt</default>
+                <Required>N</Required>
+            </ca_path>
+        </tls>
+
+        <!-- Audit Settings -->
+        <audit>
+            <database_path type="TextField">
+                <default>/var/db/yori/audit.db</default>
+                <Required>Y</Required>
+            </database_path>
+            <retention_days type="IntegerField">
+                <default>365</default>
+                <Required>Y</Required>
+                <MinimumValue>1</MinimumValue>
+                <MaximumValue>3650</MaximumValue>
+                <ValidationMessage>Retention must be between 1 and 3650 days</ValidationMessage>
+            </retention_days>
+            <log_prompts type="BooleanField">
+                <default>1</default>
+                <Required>N</Required>
+            </log_prompts>
+            <prompt_preview_length type="IntegerField">
+                <default>200</default>
+                <Required>N</Required>
+                <MinimumValue>0</MinimumValue>
+                <MaximumValue>10000</MaximumValue>
+            </prompt_preview_length>
+        </audit>
+
+        <!-- Policy Settings -->
+        <policies>
+            <directory type="TextField">
+                <default>/usr/local/etc/yori/policies</default>
+                <Required>Y</Required>
+            </directory>
+            <default_policy type="TextField">
+                <default>home_default.rego</default>
+                <Required>N</Required>
+            </default_policy>
+        </policies>
+
+        <!-- Endpoints -->
+        <endpoints>
+            <endpoint type="ArrayField">
+                <domain type="TextField">
+                    <Required>Y</Required>
+                </domain>
+                <name type="TextField">
+                    <Required>N</Required>
+                </name>
+                <enabled type="BooleanField">
+                    <default>1</default>
+                </enabled>
+            </endpoint>
+        </endpoints>
+    </items>
+</model>
