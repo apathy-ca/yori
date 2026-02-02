@@ -24,16 +24,12 @@ if ! command -v cross &> /dev/null; then
 fi
 
 echo "[1/5] Cross-compiling Rust components for FreeBSD..."
-echo "Building yori-core library..."
-cross build --release --target x86_64-unknown-freebsd \
-    --manifest-path rust/yori-core/Cargo.toml --lib
-
-echo "Building yori-proxy binary..."
+echo "Building yori-proxy binary (pure Rust - no Python dependencies)..."
 cross build --release --target x86_64-unknown-freebsd -p yori-proxy
 
 echo "[2/5] Creating package directory..."
 rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR"/{lib,python,bin,etc,rc.d}
+mkdir -p "$BUILD_DIR"/{python,bin,etc,rc.d}
 
 echo "[3/5] Copying files..."
 # Copy Rust binary (main proxy server)
@@ -41,12 +37,9 @@ mkdir -p "$BUILD_DIR/bin"
 cp target/x86_64-unknown-freebsd/release/yori-proxy \
    "$BUILD_DIR/bin/"
 
-# Copy Rust extension (for Python bindings)
-cp target/x86_64-unknown-freebsd/release/libyori_core.so \
-   "$BUILD_DIR/lib/yori_core.so"
-
-# Copy Python code (for optional Python tools/UI)
-cp -r python/yori "$BUILD_DIR/python/"
+# Copy Python code (for optional Python-based management tools, if needed)
+# Note: The main proxy is pure Rust and doesn't require Python
+cp -r python/yori "$BUILD_DIR/python/" 2>/dev/null || echo "Python code not found (optional)"
 
 # Create requirements.txt (for reference, not used in install)
 cat > "$BUILD_DIR/requirements.txt" << 'REQEOF'
@@ -198,12 +191,14 @@ echo "Attempting to install optional web framework dependencies..."
     echo "Note: Web framework dependencies not available, will use minimal mode"
 }
 
-# Copy Rust extension
-cp lib/yori_core.so "$YORI_VENV/lib/python3.11/site-packages/"
-
-# Copy Python code
-mkdir -p "$YORI_VENV/lib/python3.11/site-packages/yori"
-cp -r python/yori/* "$YORI_VENV/lib/python3.11/site-packages/yori/"
+# Copy Python code (optional - the Rust binary is the main proxy)
+if [ -d python/yori ]; then
+    mkdir -p "$YORI_VENV/lib/python3.11/site-packages/yori"
+    cp -r python/yori/* "$YORI_VENV/lib/python3.11/site-packages/yori/"
+    echo "Python management tools installed (optional)"
+else
+    echo "Skipping Python tools (not found - Rust binary is sufficient)"
+fi
 
 echo "Installing OPNsense UI files..."
 # Create OPNsense MVC directory structure if it doesn't exist
