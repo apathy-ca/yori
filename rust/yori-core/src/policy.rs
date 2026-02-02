@@ -1,15 +1,18 @@
-//! Policy evaluation engine using SARK's embedded OPA
+//! Policy evaluation engine using GRID Core's embedded OPA
 //!
-//! This module wraps sark-opa to provide policy evaluation for LLM requests.
+//! This module wraps grid-opa to provide policy evaluation for LLM requests.
 //! It's 4-10x faster than HTTP-based OPA calls.
 
+use grid_opa::engine::OPAEngine;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
+use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 /// Policy evaluation engine for LLM governance
 ///
-/// This wraps SARK's embedded OPA engine for high-performance policy evaluation
+/// This wraps GRID Core's embedded OPA engine for high-performance policy evaluation
 /// on resource-constrained home router hardware.
 ///
 /// # Example (Python)
@@ -18,6 +21,8 @@ use std::path::PathBuf;
 /// import yori_core
 ///
 /// engine = yori_core.PolicyEngine("/usr/local/etc/yori/policies")
+/// engine.load_policies()
+///
 /// result = engine.evaluate({
 ///     "user": "alice",
 ///     "endpoint": "api.openai.com",
@@ -33,8 +38,9 @@ use std::path::PathBuf;
 /// ```
 #[pyclass]
 pub struct PolicyEngine {
-    // TODO: Replace with actual sark-opa engine once integrated
+    inner: Mutex<OPAEngine>,
     policy_dir: PathBuf,
+    loaded_policies: Mutex<Vec<String>>,
 }
 
 #[pymethods]
@@ -50,8 +56,17 @@ impl PolicyEngine {
     /// A new PolicyEngine instance
     #[new]
     fn new(policy_dir: String) -> PyResult<Self> {
+        let engine = OPAEngine::new().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to create OPA engine: {}",
+                e
+            ))
+        })?;
+
         Ok(PolicyEngine {
+            inner: Mutex::new(engine),
             policy_dir: PathBuf::from(policy_dir),
+            loaded_policies: Mutex::new(Vec::new()),
         })
     }
 
@@ -67,16 +82,44 @@ impl PolicyEngine {
     /// - `allow` (bool): Whether request is allowed
     /// - `policy` (str): Name of policy that made decision
     /// - `reason` (str): Human-readable explanation
-    /// - `mode` (str): Policy mode (observe, advisory, enforce)
-    fn evaluate(&self, py: Python, _input_data: Bound<'_, PyDict>) -> PyResult<PyObject> {
-        // TODO: Implement actual OPA evaluation with sark-opa
-        // For now, return a stub that allows all requests (observe mode)
+    fn evaluate(&self, py: Python, input_data: Bound<'_, PyDict>) -> PyResult<PyObject> {
+        // Convert Python dict to JSON for OPA
+        let json_module = py.import_bound("json")?;
+        let json_str: String = json_module
+            .call_method1("dumps", (input_data,))?
+            .extract()?;
+
+        let engine = self.inner.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
+
+        // Evaluate against the authorization policy
+        let eval_result = engine.evaluate("data.authorization.allow", &json_str);
 
         let result = PyDict::new_bound(py);
-        result.set_item("allow", true)?;
-        result.set_item("policy", "stub_default")?;
-        result.set_item("reason", "Stub policy engine - all requests allowed")?;
-        result.set_item("mode", "observe")?;
+
+        match eval_result {
+            Ok(value) => {
+                // Parse the result - OPA returns a Value
+                let allow = value.as_bool().unwrap_or(false);
+                result.set_item("allow", allow)?;
+                result.set_item("policy", "authorization")?;
+                result.set_item(
+                    "reason",
+                    if allow {
+                        "Policy evaluation passed"
+                    } else {
+                        "Policy evaluation denied"
+                    },
+                )?;
+            }
+            Err(e) => {
+                // If evaluation fails, deny by default
+                result.set_item("allow", false)?;
+                result.set_item("policy", "error")?;
+                result.set_item("reason", format!("Policy evaluation error: {}", e))?;
+            }
+        }
 
         Ok(result.into())
     }
@@ -87,9 +130,101 @@ impl PolicyEngine {
     ///
     /// Number of policies loaded
     fn load_policies(&self) -> PyResult<usize> {
-        // TODO: Implement policy loading from .rego files
-        // This should scan policy_dir and load all .rego files into OPA
-        Ok(0)
+        let mut engine = self.inner.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
+
+        let mut loaded = self.loaded_policies.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
+
+        // Clear existing policies
+        engine.clear_policies();
+        loaded.clear();
+
+        // Check if directory exists
+        if !self.policy_dir.exists() {
+            return Err(PyErr::new::<pyo3::exceptions::PyFileNotFoundError, _>(
+                format!("Policy directory not found: {:?}", self.policy_dir),
+            ));
+        }
+
+        // Load all .rego files
+        let entries = fs::read_dir(&self.policy_dir).map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                "Failed to read policy directory: {}",
+                e
+            ))
+        })?;
+
+        let mut count = 0;
+        for entry in entries {
+            let entry = entry.map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                    "Failed to read directory entry: {}",
+                    e
+                ))
+            })?;
+
+            let path = entry.path();
+            if path.extension().map_or(false, |ext| ext == "rego") {
+                let policy_name = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+
+                let policy_code = fs::read_to_string(&path).map_err(|e| {
+                    PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                        "Failed to read policy file {:?}: {}",
+                        path, e
+                    ))
+                })?;
+
+                engine
+                    .load_policy(policy_name.clone(), policy_code)
+                    .map_err(|e| {
+                        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                            "Failed to load policy '{}': {}",
+                            policy_name, e
+                        ))
+                    })?;
+
+                loaded.push(policy_name);
+                count += 1;
+            }
+        }
+
+        Ok(count)
+    }
+
+    /// Load a single policy from a string
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Policy name
+    /// * `code` - Rego policy code
+    fn load_policy_string(&self, name: String, code: String) -> PyResult<()> {
+        let mut engine = self.inner.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
+
+        let mut loaded = self.loaded_policies.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
+
+        engine.load_policy(name.clone(), code).map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to load policy '{}': {}",
+                name, e
+            ))
+        })?;
+
+        if !loaded.contains(&name) {
+            loaded.push(name);
+        }
+
+        Ok(())
     }
 
     /// Get list of loaded policy names
@@ -98,29 +233,41 @@ impl PolicyEngine {
     ///
     /// List of policy names (without .rego extension)
     fn list_policies(&self, py: Python) -> PyResult<PyObject> {
-        // TODO: Return actual loaded policies
-        let policies = PyList::empty_bound(py);
+        let loaded = self.loaded_policies.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
+
+        let policies = PyList::new_bound(py, loaded.iter());
         Ok(policies.into())
     }
 
-    /// Test a policy against sample input (dry run)
-    ///
-    /// # Arguments
-    ///
-    /// * `policy_name` - Name of policy to test
-    /// * `input_data` - Sample input data
-    ///
-    /// # Returns
-    ///
-    /// Evaluation result without side effects
-    fn test_policy(&self, py: Python, policy_name: String, _input_data: Bound<'_, PyDict>) -> PyResult<PyObject> {
-        // TODO: Implement policy testing
-        let result = PyDict::new_bound(py);
-        result.set_item("allow", true)?;
-        result.set_item("policy", policy_name)?;
-        result.set_item("reason", "Test mode")?;
+    /// Clear all loaded policies
+    fn clear_policies(&self) -> PyResult<()> {
+        let mut engine = self.inner.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
 
-        Ok(result.into())
+        let mut loaded = self.loaded_policies.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
+
+        engine.clear_policies();
+        loaded.clear();
+
+        Ok(())
+    }
+
+    /// Get the policy directory path
+    fn policy_dir(&self) -> PyResult<String> {
+        Ok(self.policy_dir.to_string_lossy().to_string())
+    }
+
+    /// Get the number of loaded policies
+    fn policy_count(&self) -> PyResult<usize> {
+        let loaded = self.loaded_policies.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Lock error: {}", e))
+        })?;
+        Ok(loaded.len())
     }
 }
 

@@ -1,15 +1,15 @@
 //! YORI Core - Rust components for home LLM governance
 //!
 //! This library provides high-performance components for the YORI home gateway,
-//! leveraging battle-tested code from SARK (enterprise LLM governance).
+//! leveraging battle-tested code from GRID Core (shared with SARK enterprise governance).
 //!
 //! # Architecture
 //!
 //! ```text
 //! Python (FastAPI) ─── PyO3 bindings ───► yori-core (Rust)
 //!                                             │
-//!                                             ├─► sark-opa (policy engine)
-//!                                             ├─► sark-cache (in-memory cache)
+//!                                             ├─► grid-opa (policy engine)
+//!                                             ├─► grid-cache (in-memory cache)
 //!                                             └─► HTTP proxy logic
 //! ```
 //!

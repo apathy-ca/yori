@@ -11,9 +11,9 @@ name = "yori_core"
 crate-type = ["cdylib", "rlib"]  # cdylib for Python, rlib for Rust
 
 [dependencies]
-# SARK components (from workspace)
-sark-opa.workspace = true
-sark-cache.workspace = true
+# GRID Core components (from workspace)
+grid-opa.workspace = true
+grid-cache.workspace = true
 
 # PyO3 for Python bindings
 pyo3.workspace = true

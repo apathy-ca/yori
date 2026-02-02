@@ -1,14 +1,15 @@
-//! In-memory cache using SARK's lock-free cache implementation
+//! In-memory cache using GRID Core's lock-free cache implementation
 //!
-//! This module wraps sark-cache to provide fast, thread-safe caching
+//! This module wraps grid-cache to provide fast, thread-safe caching
 //! without requiring Redis on resource-constrained home routers.
 
+use grid_cache::lru_ttl::LRUTTLCache;
 use pyo3::prelude::*;
-use std::time::Duration;
+use pyo3::types::PyDict;
 
 /// High-performance in-memory cache
 ///
-/// This wraps SARK's lock-free cache implementation, eliminating the need
+/// This wraps GRID Core's lock-free cache implementation, eliminating the need
 /// for external Redis/Valkey instances on home router hardware.
 ///
 /// # Example (Python)
@@ -19,7 +20,7 @@ use std::time::Duration;
 /// cache = yori_core.Cache(max_entries=10000, ttl_seconds=3600)
 ///
 /// # Cache policy evaluation results
-/// cache.set("policy:alice:openai", {"allow": true, "reason": "approved"})
+/// cache.set("policy:alice:openai", '{"allow": true, "reason": "approved"}')
 ///
 /// # Retrieve cached result
 /// result = cache.get("policy:alice:openai")
@@ -29,9 +30,7 @@ use std::time::Duration;
 /// ```
 #[pyclass]
 pub struct Cache {
-    // TODO: Replace with actual sark-cache instance
-    max_entries: usize,
-    ttl: Duration,
+    inner: LRUTTLCache,
 }
 
 #[pymethods]
@@ -49,9 +48,18 @@ impl Cache {
     #[new]
     #[pyo3(signature = (max_entries=10000, ttl_seconds=3600))]
     fn new(max_entries: usize, ttl_seconds: u64) -> PyResult<Self> {
+        if max_entries == 0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "max_entries must be greater than 0",
+            ));
+        }
+        if ttl_seconds == 0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "ttl_seconds must be greater than 0",
+            ));
+        }
         Ok(Cache {
-            max_entries,
-            ttl: Duration::from_secs(ttl_seconds),
+            inner: LRUTTLCache::new(max_entries, ttl_seconds),
         })
     }
 
@@ -60,15 +68,18 @@ impl Cache {
     /// # Arguments
     ///
     /// * `key` - Cache key (string)
-    /// * `value` - Value to store (any Python object that can be pickled)
+    /// * `value` - Value to store (string - use JSON for complex objects)
     ///
     /// # Returns
     ///
     /// True if stored successfully
-    fn set(&self, _key: String, _value: PyObject) -> PyResult<bool> {
-        // TODO: Implement actual cache storage with sark-cache
-        // For now, this is a stub that does nothing
-        Ok(true)
+    fn set(&self, key: String, value: String) -> PyResult<bool> {
+        match self.inner.set(key, value) {
+            Ok(()) => Ok(true),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                format!("Cache set failed: {}", e),
+            )),
+        }
     }
 
     /// Retrieve a value from the cache
@@ -80,9 +91,8 @@ impl Cache {
     /// # Returns
     ///
     /// Cached value if found and not expired, None otherwise
-    fn get(&self, _py: Python, _key: String) -> PyResult<Option<PyObject>> {
-        // TODO: Implement actual cache retrieval
-        Ok(None)
+    fn get(&self, _py: Python, key: String) -> PyResult<Option<String>> {
+        Ok(self.inner.get(&key))
     }
 
     /// Delete a value from the cache
@@ -94,9 +104,8 @@ impl Cache {
     /// # Returns
     ///
     /// True if entry existed and was deleted
-    fn delete(&self, _key: String) -> PyResult<bool> {
-        // TODO: Implement cache deletion
-        Ok(false)
+    fn delete(&self, key: String) -> PyResult<bool> {
+        Ok(self.inner.delete(&key))
     }
 
     /// Clear all entries from the cache
@@ -105,8 +114,7 @@ impl Cache {
     ///
     /// Number of entries removed
     fn clear(&self) -> PyResult<usize> {
-        // TODO: Implement cache clearing
-        Ok(0)
+        Ok(self.inner.clear())
     }
 
     /// Get cache statistics
@@ -115,17 +123,11 @@ impl Cache {
     ///
     /// Dictionary with cache stats:
     /// - `entries` (int): Current number of entries
-    /// - `hits` (int): Number of cache hits
-    /// - `misses` (int): Number of cache misses
-    /// - `hit_rate` (float): Hit rate percentage
+    /// - `max_size` (int): Maximum number of entries
     fn stats(&self, py: Python) -> PyResult<PyObject> {
-        use pyo3::types::PyDict;
-
         let stats = PyDict::new_bound(py);
-        stats.set_item("entries", 0)?;
-        stats.set_item("hits", 0)?;
-        stats.set_item("misses", 0)?;
-        stats.set_item("hit_rate", 0.0)?;
+        stats.set_item("entries", self.inner.len())?;
+        stats.set_item("max_size", self.inner.max_size())?;
 
         Ok(stats.into())
     }
@@ -139,24 +141,18 @@ impl Cache {
     /// # Returns
     ///
     /// True if key exists and is not expired
-    fn contains(&self, _key: String) -> PyResult<bool> {
-        // TODO: Implement existence check
-        Ok(false)
+    fn contains(&self, key: String) -> PyResult<bool> {
+        Ok(self.inner.get(&key).is_some())
     }
 
-    /// Set TTL for a specific key
-    ///
-    /// # Arguments
-    ///
-    /// * `key` - Cache key
-    /// * `ttl_seconds` - New TTL in seconds
-    ///
-    /// # Returns
-    ///
-    /// True if TTL was updated
-    fn set_ttl(&self, _key: String, _ttl_seconds: u64) -> PyResult<bool> {
-        // TODO: Implement per-key TTL
-        Ok(false)
+    /// Get current number of entries
+    fn len(&self) -> PyResult<usize> {
+        Ok(self.inner.len())
+    }
+
+    /// Check if cache is empty
+    fn is_empty(&self) -> PyResult<bool> {
+        Ok(self.inner.len() == 0)
     }
 }
 
@@ -168,8 +164,14 @@ mod tests {
     fn test_cache_creation() {
         let cache = Cache::new(1000, 300);
         assert!(cache.is_ok());
-        let c = cache.unwrap();
-        assert_eq!(c.max_entries, 1000);
-        assert_eq!(c.ttl, Duration::from_secs(300));
+    }
+
+    #[test]
+    fn test_cache_invalid_params() {
+        let cache = Cache::new(0, 300);
+        assert!(cache.is_err());
+
+        let cache = Cache::new(1000, 0);
+        assert!(cache.is_err());
     }
 }

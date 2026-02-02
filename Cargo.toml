@@ -13,13 +13,13 @@ license = "MIT"
 repository = "https://github.com/apathy-ca/yori"
 
 [workspace.dependencies]
-# SARK components - git dependencies for cross-compilation
-sark-opa = { git = "https://github.com/apathy-ca/sark", rev = "33b82fc6b4c3aa3c465ee9e1f849fa25c9cdcae0" }
-sark-cache = { git = "https://github.com/apathy-ca/sark", rev = "33b82fc6b4c3aa3c465ee9e1f849fa25c9cdcae0" }
+# GRID Core components - shared Rust library for SARK and YORI
+grid-opa = { git = "https://github.com/apathy-ca/grid-core" }
+grid-cache = { git = "https://github.com/apathy-ca/grid-core" }
 
 # For local development, use path dependencies:
-#   sark-opa = { path = "../sark/rust/sark-opa" }
-#   sark-cache = { path = "../sark/rust/sark-cache" }
+#   grid-opa = { path = "../sark-core/crates/grid-opa" }
+#   grid-cache = { path = "../sark-core/crates/grid-cache" }
 
 # PyO3 for Python bindings (must match SARK crates)
 pyo3 = { version = "0.22", features = ["extension-module"] }

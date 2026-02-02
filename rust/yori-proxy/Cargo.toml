@@ -11,9 +11,9 @@ name = "yori-proxy"
 path = "src/main.rs"
 
 [dependencies]
-# SARK components (from workspace)
-sark-opa.workspace = true
-sark-cache.workspace = true
+# GRID Core components (from workspace)
+grid-opa.workspace = true
+grid-cache.workspace = true
 
 # HTTP proxy
 hyper = { workspace = true, features = ["server", "http1"] }
